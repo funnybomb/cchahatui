@@ -18,7 +18,7 @@ describe('PR quality workflow', () => {
 
     expect(workflow).toContain('COVERAGE_BASE_REF: origin/${{ github.base_ref }}')
     expect(workflow).toContain('cat "$latest_report" >> "$GITHUB_STEP_SUMMARY"')
-    expect(workflow).toContain('uses: actions/upload-artifact@v4')
+    expect(workflow).toContain('uses: actions/upload-artifact@v7')
     expect(workflow).toContain('path: artifacts/coverage/')
     expect(workflow).toContain('retention-days: 14')
   })
