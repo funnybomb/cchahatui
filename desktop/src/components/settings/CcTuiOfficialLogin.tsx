@@ -1,6 +1,6 @@
 // desktop/src/components/settings/CcTuiOfficialLogin.tsx
 //
-// 显示当前 cc-tui 官方兼容 OAuth 登录状态,提供 Login / Logout 按钮。
+// 显示当前 Claude Code 官方 OAuth 登录状态,提供 Login / Logout 按钮。
 // 点击 Login 调 Tauri shell.open 打开浏览器走 OAuth flow;浏览器回 callback
 // 到 haha server 后,store 的 polling 自动刷新 UI 展示"已登录"。
 
@@ -34,7 +34,7 @@ export function CcTuiOfficialLogin() {
         await shellOpen(authorizeUrl)
         startPolling()
       } catch (err) {
-        console.error('[cc-tui official login] shellOpen failed:', err)
+        console.error('[claude-code official login] shellOpen failed:', err)
         useHahaOAuthStore.setState({
           error: t('settings.claudeOfficialLogin.openBrowserFailed'),
         })

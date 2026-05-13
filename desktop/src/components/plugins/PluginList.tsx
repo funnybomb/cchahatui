@@ -24,6 +24,7 @@ export function PluginList() {
   const sessions = useSessionStore((s) => s.sessions)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const addToast = useUIStore((s) => s.addToast)
+  const setPendingSettingsTab = useUIStore((s) => s.setPendingSettingsTab)
   const t = useTranslation()
   const activeSession = sessions.find((session) => session.id === activeSessionId)
   const currentWorkDir = activeSession?.workDir || undefined
@@ -95,6 +96,14 @@ export function PluginList() {
         <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
           {t('settings.plugins.emptyHint')}
         </p>
+        <Button
+          size="sm"
+          className="mt-4 min-h-9"
+          onClick={() => setPendingSettingsTab('terminal')}
+        >
+          <span className="material-symbols-outlined text-[16px]">terminal</span>
+          {t('settings.plugins.openTerminal')}
+        </Button>
       </div>
     )
   }

@@ -1,7 +1,7 @@
 [
   {
     "id": "official",
-    "name": "cc-tui Official Compatible",
+    "name": "Claude Code Official Compatible",
     "baseUrl": "",
     "apiFormat": "anthropic",
     "defaultModels": {
@@ -11,7 +11,7 @@
       "opus": ""
     },
     "needsApiKey": false,
-    "websiteUrl": "https://github.com/Hmbown/DeepSeek-TUI"
+    "websiteUrl": "https://claude.com/code"
   },
   {
     "id": "deepseek",
