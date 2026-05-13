@@ -1,45 +1,63 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="130" y1="120" x2="890" y2="910" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E8F8FF"/>
-      <stop offset="0.48" stop-color="#F7FBFF"/>
-      <stop offset="1" stop-color="#FFF0E2"/>
+    <linearGradient id="bg" x1="144" y1="118" x2="884" y2="904" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E7FAFF"/>
+      <stop offset="0.52" stop-color="#F8FCFF"/>
+      <stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
-    <linearGradient id="deepseek" x1="190" y1="312" x2="774" y2="728" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#118BD2"/>
-      <stop offset="0.48" stop-color="#17B7C8"/>
-      <stop offset="1" stop-color="#5B7CFF"/>
+    <linearGradient id="body" x1="214" y1="304" x2="810" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B7FD3"/>
+      <stop offset="0.46" stop-color="#19B8D0"/>
+      <stop offset="1" stop-color="#3569F4"/>
     </linearGradient>
-    <linearGradient id="claude" x1="664" y1="292" x2="826" y2="744" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7B955"/>
-      <stop offset="1" stop-color="#D97833"/>
+    <linearGradient id="belly" x1="350" y1="428" x2="760" y2="700" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9FBFF"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.88"/>
     </linearGradient>
-    <radialGradient id="softBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(321 283) rotate(49) scale(488 364)">
-      <stop stop-color="#4ED8EF" stop-opacity="0.45"/>
-      <stop offset="1" stop-color="#4ED8EF" stop-opacity="0"/>
+    <linearGradient id="terminal" x1="316" y1="474" x2="516" y2="676" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#103C64"/>
+      <stop offset="1" stop-color="#15243D"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="684" y1="252" x2="792" y2="378" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC45D"/>
+      <stop offset="1" stop-color="#E67A31"/>
+    </linearGradient>
+    <radialGradient id="aquaGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(342 262) rotate(44) scale(460 320)">
+      <stop stop-color="#4FE5F4" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#4FE5F4" stop-opacity="0"/>
     </radialGradient>
-    <filter id="shadow" x="48" y="56" width="928" height="930" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#0B2440" flood-opacity="0.18"/>
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0B2440" flood-opacity="0.08"/>
+    <filter id="panelShadow" x="42" y="54" width="940" height="940" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="30" flood-color="#0A3157" flood-opacity="0.16"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0A3157" flood-opacity="0.08"/>
+    </filter>
+    <filter id="softShadow" x="162" y="244" width="710" height="548" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="22" flood-color="#0A3157" flood-opacity="0.18"/>
     </filter>
   </defs>
 
-  <g filter="url(#shadow)">
-    <rect x="74" y="74" width="876" height="876" rx="210" fill="url(#bg)"/>
-    <rect x="74" y="74" width="876" height="876" rx="210" fill="url(#softBlue)"/>
-    <rect x="92" y="92" width="840" height="840" rx="194" stroke="#FFFFFF" stroke-opacity="0.82" stroke-width="28"/>
+  <g filter="url(#panelShadow)">
+    <rect x="74" y="74" width="876" height="876" rx="214" fill="url(#bg)"/>
+    <rect x="74" y="74" width="876" height="876" rx="214" fill="url(#aquaGlow)"/>
+    <rect x="96" y="96" width="832" height="832" rx="192" stroke="#FFFFFF" stroke-opacity="0.86" stroke-width="30"/>
   </g>
 
-  <path d="M220 502C254 361 379 273 523 284C633 292 712 354 736 440C685 395 606 376 530 398C447 421 388 482 363 560C340 523 287 497 220 502Z" fill="#D7F7FF"/>
-  <path d="M217 510C270 326 501 238 661 349C750 411 772 520 716 611C662 699 548 743 440 705C350 674 293 601 276 516" stroke="url(#deepseek)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M694 340C768 398 785 510 727 599C675 679 570 720 466 699" stroke="#0F6FAF" stroke-width="24" stroke-linecap="round" opacity="0.55"/>
-  <circle cx="714" cy="360" r="18" fill="#118BD2"/>
-  <circle cx="777" cy="472" r="13" fill="#17B7C8"/>
-  <circle cx="309" cy="362" r="15" fill="#5B7CFF" opacity="0.85"/>
+  <g filter="url(#softShadow)">
+    <path d="M224 540C250 386 390 282 548 294C690 304 800 404 805 534C752 486 672 470 604 500C537 530 500 592 506 660C452 626 389 604 321 608C270 611 235 588 224 540Z" fill="url(#body)"/>
+    <path d="M237 535C285 350 518 260 680 365C779 430 789 553 704 635C617 719 466 712 378 612" stroke="url(#body)" stroke-width="74" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M302 566C366 626 468 652 571 626C664 603 725 536 736 456C773 527 743 616 666 668C569 733 428 716 337 636C307 609 286 584 302 566Z" fill="url(#belly)" opacity="0.96"/>
+    <path d="M646 350C735 414 760 524 704 609C657 680 566 713 468 696" stroke="#0B6FAA" stroke-width="24" stroke-linecap="round" opacity="0.54"/>
+    <path d="M236 522C300 512 360 540 401 586" stroke="#C9F8FF" stroke-width="26" stroke-linecap="round" opacity="0.75"/>
+    <path d="M214 541C174 502 153 449 166 396C218 413 258 453 276 506" fill="#139BDD"/>
+    <path d="M777 392C832 380 874 344 894 292C832 284 775 310 736 358" fill="#2E72F2"/>
+    <path d="M754 360C798 338 828 296 840 246C782 256 733 292 706 342" fill="#18BBD0"/>
+    <circle cx="663" cy="368" r="17" fill="#0A3762"/>
+    <circle cx="670" cy="362" r="5" fill="#FFFFFF"/>
+    <circle cx="769" cy="454" r="12" fill="#D6FAFF" opacity="0.95"/>
+    <circle cx="300" cy="372" r="14" fill="#4D8DFF" opacity="0.88"/>
+  </g>
 
-  <path d="M302 381L474 512L302 643" stroke="#17213A" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="424" y="666" width="136" height="54" rx="23" fill="#17213A"/>
-  <path d="M670 300H824V724H670" stroke="url(#claude)" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M608 315L627 374L686 393L627 412L608 471L589 412L530 393L589 374L608 315Z" fill="#F7B955"/>
-  <path d="M742 642L757 688L803 703L757 718L742 764L727 718L681 703L727 688L742 642Z" fill="#D97833" opacity="0.92"/>
+  <path d="M330 468L444 558L330 648" stroke="url(#terminal)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="434" y="660" width="120" height="42" rx="18" fill="url(#terminal)"/>
+  <path d="M717 254L734 306L786 323L734 340L717 392L700 340L648 323L700 306L717 254Z" fill="url(#spark)"/>
+  <path d="M812 650L825 690L865 703L825 716L812 756L799 716L759 703L799 690L812 650Z" fill="#F09A3F" opacity="0.88"/>
 </svg>
