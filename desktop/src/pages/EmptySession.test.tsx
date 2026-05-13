@@ -273,7 +273,7 @@ describe('EmptySession', () => {
     await waitFor(() => {
       expect(mocks.wsSend).toHaveBeenCalledWith('draft-session', expect.objectContaining({
         type: 'user_message',
-        content: expect.stringContaining('<project-memory>'),
+        content: expect.stringContaining('<project-memory'),
       }))
     })
     expect(mocks.wsSend).toHaveBeenCalledWith('draft-session', expect.objectContaining({
@@ -284,6 +284,36 @@ describe('EmptySession', () => {
       type: 'user_text',
       content: 'draft question',
     })
+  })
+
+  it('does not inject project memory into the first message when reuse is disabled', async () => {
+    useProjectMemoryStore.getState().setMemory('/workspace/project', 'Keep this saved.', {
+      facts: ['Do not inject.'],
+    }, false)
+
+    render(<EmptySession />)
+
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'draft without memory', selectionStart: 20 },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Pick project' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Run/i })).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+
+    await waitFor(() => {
+      expect(mocks.wsSend).toHaveBeenCalledWith('draft-session', {
+        type: 'user_message',
+        content: 'draft without memory',
+        attachments: [],
+      })
+    })
+    const lastSendCall = mocks.wsSend.mock.calls[mocks.wsSend.mock.calls.length - 1]
+    expect(lastSendCall?.[1].content).not.toContain('<project-memory')
+    expect(lastSendCall?.[1].content).not.toContain('Keep this saved.')
   })
 
   it('stores and replays a draft runtime only when the user explicitly selected one', async () => {

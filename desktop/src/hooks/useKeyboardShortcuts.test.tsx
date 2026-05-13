@@ -136,6 +136,18 @@ describe('useKeyboardShortcuts', () => {
     window.removeEventListener('cchahatui:open-project-memory', listener)
   })
 
+  it('dispatches a shortcut help event with Cmd+/', () => {
+    const listener = vi.fn()
+    window.addEventListener('cchahatui:open-shortcuts-help', listener)
+
+    render(<Harness />)
+
+    fireEvent.keyDown(document, { key: '/', metaKey: true })
+
+    expect(listener).toHaveBeenCalled()
+    window.removeEventListener('cchahatui:open-shortcuts-help', listener)
+  })
+
   it('switches to a numbered tab with Cmd+1..9', () => {
     useTabStore.setState({
       activeTabId: 'session-1',

@@ -7,9 +7,9 @@ import {
   type WorkspaceTreeResult,
 } from '../api/sessions'
 
-export const WORKSPACE_PANEL_DEFAULT_WIDTH = 860
-export const WORKSPACE_PANEL_MIN_WIDTH = 640
-export const WORKSPACE_PANEL_MAX_WIDTH = 1120
+export const WORKSPACE_PANEL_DEFAULT_WIDTH = 760
+export const WORKSPACE_PANEL_MIN_WIDTH = 560
+export const WORKSPACE_PANEL_MAX_WIDTH = 1080
 
 export type WorkspacePanelView = 'changed' | 'all'
 export type WorkspacePreviewKind = 'file' | 'diff'

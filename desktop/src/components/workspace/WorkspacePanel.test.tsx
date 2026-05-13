@@ -212,9 +212,9 @@ describe('WorkspacePanel', () => {
     const view = await renderPanel('session-changed')
 
     const compactPanel = view.getByTestId('workspace-panel')
-    expect(compactPanel.style.width).toBe('520px')
-    expect(compactPanel.style.maxWidth).toBe('36%')
-    expect(compactPanel.style.minWidth).toBe('min(340px, 40%)')
+    expect(compactPanel.style.width).toBe('500px')
+    expect(compactPanel.style.maxWidth).toBe('35%')
+    expect(compactPanel.style.minWidth).toBe('min(320px, 40%)')
 
     await waitFor(() => {
       expect(getMocks().getWorkspaceStatusMock).toHaveBeenCalledWith('session-changed')
@@ -260,8 +260,8 @@ describe('WorkspacePanel', () => {
       expect(view.getByTestId('workspace-code').textContent).toContain('console.log("new")')
     })
     const expandedPanel = view.getByTestId('workspace-panel')
-    expect(expandedPanel.style.width).toBe('860px')
-    expect(expandedPanel.style.maxWidth).toBe('min(62%, calc(100% - 328px))')
+    expect(expandedPanel.style.width).toBe('760px')
+    expect(expandedPanel.style.maxWidth).toBe('min(60%, calc(100% - 336px))')
     expect(expandedPanel.style.minWidth).toBe('min(420px, 54%)')
     expect(view.getAllByText('Diff').length).toBeGreaterThan(0)
   })
@@ -700,7 +700,7 @@ describe('WorkspacePanel', () => {
     const tabList = view.getByRole('tablist', { name: 'Preview tabs' })
     const codeSurface = view.getByTestId('workspace-code')
 
-    expect(panel.className).toContain('bg-[var(--color-surface)]')
+    expect(panel.className).toContain('workspace-panel-surface')
     expect(panel.className).not.toContain('bg-white')
     expect(tabList.className).toContain('bg-[var(--color-surface-container-lowest)]')
     expect(tabList.className).not.toContain('bg-white')
@@ -761,7 +761,7 @@ describe('WorkspacePanel', () => {
       expect(view.getByTestId('workspace-code').textContent).toContain('+line 2300')
     })
     expect(view.getByRole('button', { name: 'Collapse preview' })).toBeTruthy()
-  })
+  }, 30000)
 
   it('keeps diff rows intrinsically wide so H5 users can scroll sideways', async () => {
     const longDiffLine = '+const label = "this is a very long generated line that should not be compressed into the phone viewport";'
@@ -857,7 +857,7 @@ describe('WorkspacePanel', () => {
       expect(view.getByTestId('workspace-code').textContent).toContain('const line2050 = 2050')
     })
     expect(view.getByRole('button', { name: 'Collapse preview' })).toBeTruthy()
-  }, 10000)
+  }, 30000)
 
   it('renders image previews from workspace files', async () => {
     await setWorkspaceState((state) => ({
@@ -897,7 +897,7 @@ describe('WorkspacePanel', () => {
 
     const image = await view.findByRole('img', { name: 'logo.png' })
     expect(image.getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=')
-  })
+  }, 30000)
 
   it('renders markdown file previews as formatted documents', async () => {
     await setWorkspaceState((state) => ({

@@ -2,8 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
+const { removeProjectMock } = vi.hoisted(() => ({
+  removeProjectMock: vi.fn(),
+}))
+
 vi.mock('./ProjectFilter', () => ({
   ProjectFilter: () => <div data-testid="project-filter" />,
+}))
+
+vi.mock('../../api/projects', () => ({
+  projectsApi: {
+    removeProject: removeProjectMock,
+  },
 }))
 
 vi.mock('../../i18n', () => ({
@@ -22,6 +32,7 @@ vi.mock('../../i18n', () => ({
       'common.save': 'Save',
       'common.delete': 'Delete',
       'common.rename': 'Rename',
+      'common.close': 'Close',
       'sidebar.timeGroup.today': 'Today',
       'sidebar.timeGroup.yesterday': 'Yesterday',
       'sidebar.timeGroup.last7days': 'Last 7 Days',
@@ -42,12 +53,37 @@ vi.mock('../../i18n', () => ({
       'sidebar.batchDeleteSucceeded': 'Deleted {count} sessions.',
       'sidebar.batchDeleteFailed': '{count} sessions could not be deleted.',
       'sidebar.projectsTitle': 'Projects',
+      'sidebar.projectPinned': 'Pinned',
+      'sidebar.projectActive': 'Active',
+      'sidebar.projectNoSessions': 'No sessions',
       'sidebar.projectSessionCount': '{count} sessions',
       'sidebar.projectMissingCount': '{count} missing',
       'sidebar.projectNewSession': 'New session in {project}',
+      'sidebar.projectActions': 'Project actions for {project}',
+      'sidebar.sessionActions': 'Session actions for {session}',
+      'sidebar.projectCreateFirstSession': 'New session',
+      'sidebar.projectPin': 'Pin project',
+      'sidebar.projectUnpin': 'Unpin project',
+      'sidebar.projectForget': 'Forget project',
+      'sidebar.projectForgotten': 'Project removed from the list.',
+      'sidebar.projectForgetFailed': 'Failed to forget project.',
       'sidebar.projectMemory': 'Project memory',
+      'sidebar.projectMemoryBadge': 'Memory',
       'sidebar.projectMemoryHint': 'Saved notes are added as private context.',
       'sidebar.projectMemoryPlaceholder': 'Project facts...',
+      'sidebar.projectMemorySummary': 'Project memory summary',
+      'sidebar.projectMemoryFacts': 'Facts',
+      'sidebar.projectMemoryFactsPlaceholder': 'One fact per line...',
+      'sidebar.projectMemoryDecisions': 'Decisions',
+      'sidebar.projectMemoryDecisionsPlaceholder': 'One decision per line...',
+      'sidebar.projectMemoryOpenTasks': 'Open tasks',
+      'sidebar.projectMemoryOpenTasksPlaceholder': 'One open task per line...',
+      'sidebar.projectMemoryIncludeInContext': 'Reuse in new chats',
+      'sidebar.projectMemoryIncludeInContextHint': 'Adds memory privately.',
+      'sidebar.projectMemoryClear': 'Clear memory',
+      'sidebar.projectMemoryUpdatedAt': 'Updated {time}',
+      'sidebar.projectMemoryNeverUpdated': 'Never',
+      'sidebar.projectMemoryCharacters': '{count} chars',
       'sidebar.projectMemorySaved': 'Project memory saved.',
       'sidebar.projectMemoryCleared': 'Project memory cleared.',
       'sidebar.projectMemoryNoProject': 'Open a project session before editing project memory.',
@@ -63,6 +99,7 @@ vi.mock('../../i18n', () => ({
       'sidebar.relative.months': '{count}mo',
       'sidebar.collapse': 'Collapse sidebar',
       'sidebar.expand': 'Expand sidebar',
+      'shortcuts.title': 'Keyboard shortcuts',
     }
 
     let text = translations[key] ?? key
@@ -79,6 +116,15 @@ import { useSessionStore } from '../../stores/sessionStore'
 import { useTabStore } from '../../stores/tabStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useProjectMemoryStore } from '../../stores/projectMemoryStore'
+import { useProjectNavigationStore } from '../../stores/projectNavigationStore'
+
+function getSessionMainButton(name: RegExp) {
+  const button = screen
+    .getAllByRole('button', { name })
+    .find((candidate) => !candidate.getAttribute('aria-label')?.startsWith('Session actions for '))
+  if (!button) throw new Error(`Session button not found: ${String(name)}`)
+  return button
+}
 
 describe('Sidebar', () => {
   const connectToSession = vi.fn()
@@ -101,6 +147,7 @@ describe('Sidebar', () => {
     deleteSessions.mockReset()
     renameSession.mockReset()
     addToast.mockReset()
+    removeProjectMock.mockReset()
 
     useTabStore.setState({ tabs: [], activeTabId: null })
     useSessionStore.setState({
@@ -127,6 +174,7 @@ describe('Sidebar', () => {
       addToast,
     } as Partial<ReturnType<typeof useUIStore.getState>>)
     useProjectMemoryStore.setState({ ...initialProjectMemoryState, memories: {} }, true)
+    useProjectNavigationStore.setState({ pinnedProjectPaths: [] })
   })
 
   afterEach(() => {
@@ -197,7 +245,7 @@ describe('Sidebar', () => {
 
     render(<Sidebar />)
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: /Open Session/ }))
+    fireEvent.contextMenu(getSessionMainButton(/Open Session/))
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
@@ -364,6 +412,60 @@ describe('Sidebar', () => {
     })
   })
 
+  it('shows pinned, active, empty, and missing project states', () => {
+    useProjectNavigationStore.getState().pinProject('/workspace/pinned')
+    useSessionStore.setState({
+      availableProjects: ['/workspace/pinned', '/workspace/empty'],
+      sessions: [
+        {
+          id: 'session-active',
+          title: 'Active Project Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T04:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+        {
+          id: 'session-missing',
+          title: 'Missing Project Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T03:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-missing',
+          workDir: '/workspace/project-missing',
+          workDirExists: false,
+        },
+      ],
+    })
+    useTabStore.setState({
+      tabs: [{ sessionId: 'session-active', title: 'Active Project Task', type: 'session', status: 'idle' }],
+      activeTabId: 'session-active',
+    })
+
+    render(<Sidebar />)
+
+    const groups = screen.getAllByTestId('sidebar-project-group')
+    const pinnedGroup = groups[0]
+    expect(pinnedGroup).toBeTruthy()
+    expect(pinnedGroup!).toHaveAttribute('data-pinned', 'true')
+    expect(within(pinnedGroup!).getByText('pinned')).toBeInTheDocument()
+    expect(within(pinnedGroup!).getByText('Pinned')).toBeInTheDocument()
+
+    const activeGroup = groups.find((group) => within(group).queryByText('project-a'))
+    expect(activeGroup).toBeTruthy()
+    expect(within(activeGroup!).getByText('Active')).toBeInTheDocument()
+
+    const emptyGroup = groups.find((group) => within(group).queryByText('empty'))
+    expect(emptyGroup).toHaveAttribute('data-project-state', 'empty')
+    expect(within(emptyGroup!).getByText('No sessions')).toBeInTheDocument()
+
+    const missingGroup = groups.find((group) => within(group).queryByText('project-missing'))
+    expect(missingGroup).toHaveAttribute('data-project-state', 'missing')
+    expect(within(missingGroup!).getByText(/1 missing/)).toBeInTheDocument()
+  })
+
   it('filters project groups by both project path and work dir', () => {
     useSessionStore.setState({
       selectedProjects: ['/workspace/project-a'],
@@ -470,6 +572,30 @@ describe('Sidebar', () => {
     })
   })
 
+  it('shows a quiet memory badge for projects with saved memory', () => {
+    useProjectMemoryStore.getState().setMemory('/workspace/project-a', 'Use the desktop smoke lane.')
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    const group = screen.getByTestId('sidebar-project-group')
+    expect(group).toHaveAttribute('data-memory-state', 'saved')
+    expect(within(group).getByText('Memory')).toBeInTheDocument()
+  })
+
   it('opens a project context menu with project actions', async () => {
     createSession.mockResolvedValue('session-project-context')
     const writeText = vi.fn().mockResolvedValue(undefined)
@@ -524,6 +650,152 @@ describe('Sidebar', () => {
     expect(await screen.findByRole('dialog', { name: 'Project memory' })).toBeInTheDocument()
   })
 
+  it('opens project actions from the app-rendered menu button without browser right-click', async () => {
+    createSession.mockResolvedValue('session-project-context')
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Project actions for project-a' }))
+
+    expect(screen.getByRole('button', { name: 'Pin project' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy project path' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Forget project' })).toBeInTheDocument()
+  })
+
+  it('opens session actions from the app-rendered menu button without browser right-click', async () => {
+    renameSession.mockResolvedValue(undefined)
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Open Session',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Session actions for Open Session' }))
+
+    expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
+    expect(screen.getByDisplayValue('Open Session')).toBeInTheDocument()
+  })
+
+  it('keeps project and session action menus available in mobile web layout', () => {
+    const onRequestClose = vi.fn()
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Mobile Session',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar isMobile onRequestClose={onRequestClose} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Project actions for project-a' }))
+    expect(screen.getByRole('button', { name: 'Project memory' })).toBeInTheDocument()
+
+    fireEvent.click(document.body)
+    fireEvent.click(screen.getByRole('button', { name: 'Session actions for Mobile Session' }))
+    expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument()
+  })
+
+  it('pins and unpins a project from the project context menu', () => {
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    fireEvent.contextMenu(screen.getByText('project-a'))
+    fireEvent.click(screen.getByRole('button', { name: 'Pin project' }))
+    expect(useProjectNavigationStore.getState().isPinned('/workspace/project-a')).toBe(true)
+
+    fireEvent.contextMenu(screen.getByText('project-a'))
+    fireEvent.click(screen.getByRole('button', { name: 'Unpin project' }))
+    expect(useProjectNavigationStore.getState().isPinned('/workspace/project-a')).toBe(false)
+  })
+
+  it('forgets a project record from the project context menu without deleting sessions', async () => {
+    removeProjectMock.mockResolvedValue({ ok: true, removed: true })
+    fetchSessions.mockResolvedValue(undefined)
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    fireEvent.contextMenu(screen.getByText('project-a'))
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Forget project' }))
+    })
+
+    await waitFor(() => {
+      expect(removeProjectMock).toHaveBeenCalledWith('/workspace/project-a')
+      expect(fetchSessions).toHaveBeenCalled()
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Project removed from the list.',
+      })
+    })
+    expect(deleteSession).not.toHaveBeenCalled()
+    expect(deleteSessions).not.toHaveBeenCalled()
+  })
+
   it('shows missing directories, running status, and supports inline rename', async () => {
     renameSession.mockResolvedValue(undefined)
     useSessionStore.setState({
@@ -555,7 +827,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('Missing')).toBeInTheDocument()
     expect(screen.getByLabelText('Session running')).toBeInTheDocument()
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: /Running Session/ }))
+    fireEvent.contextMenu(getSessionMainButton(/Running Session/))
     fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
     const input = screen.getByDisplayValue('Running Session')
     fireEvent.change(input, { target: { value: 'Renamed Session' } })
@@ -590,7 +862,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('button', { name: 'Scheduled' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Open Session/ }))
+    fireEvent.click(getSessionMainButton(/Open Session/))
     expect(onRequestClose).toHaveBeenCalledTimes(1)
 
     await act(async () => {

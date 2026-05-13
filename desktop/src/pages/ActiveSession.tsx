@@ -11,6 +11,7 @@ import { useChatStore } from '../stores/chatStore'
 import { useCLITaskStore } from '../stores/cliTaskStore'
 import { useTeamStore } from '../stores/teamStore'
 import { useWorkspacePanelStore } from '../stores/workspacePanelStore'
+import { hasProjectMemory as memoryEntryHasContent, useProjectMemoryStore } from '../stores/projectMemoryStore'
 import {
   TERMINAL_PANEL_DEFAULT_HEIGHT,
   TERMINAL_PANEL_MAX_HEIGHT,
@@ -32,8 +33,7 @@ import { isTauriRuntime } from '../lib/desktopRuntime'
 const TASK_POLL_INTERVAL_MS = 1000
 const WORKSPACE_RESIZE_STEP = 32
 const TERMINAL_RESIZE_STEP = 24
-const CHAT_COLUMN_WITH_WORKSPACE_CLASS =
-  'min-w-[320px] flex-1 border-r border-[var(--color-border)] bg-[var(--color-surface)]'
+const CHAT_COLUMN_WITH_WORKSPACE_CLASS = 'chat-column-with-workspace flex flex-col'
 
 function isSessionTabState(activeTabId: string | null, activeTabType: TabType | null | undefined) {
   if (!activeTabId) return false
@@ -48,6 +48,12 @@ function getSessionTerminalCwd(session: SessionListItem | undefined) {
   if (!session) return undefined
   if (session.workDir && session.workDirExists !== false) return session.workDir
   return session.projectPath || undefined
+}
+
+function getProjectTitle(projectPath: string) {
+  const normalized = projectPath.replace(/[\\/]+$/, '')
+  const parts = normalized.split(/[\\/]+/).filter(Boolean)
+  return parts[parts.length - 1] || normalized || projectPath
 }
 
 function WorkspaceResizeHandle() {
@@ -220,6 +226,11 @@ export function ActiveSession() {
   const stopMemberPolling = useTeamStore((s) => s.stopMemberPolling)
   const activeTeam = useTeamStore((s) => s.activeTeam)
   const isMemberSession = !!memberInfo
+  const sessionProjectPath = session?.projectPath || session?.workDir || ''
+  const sessionProjectTitle = sessionProjectPath ? getProjectTitle(sessionProjectPath) : ''
+  const projectMemorySaved = useProjectMemoryStore((state) =>
+    sessionProjectPath ? memoryEntryHasContent(state.memories[sessionProjectPath]) : false,
+  )
   const showWorkspacePanel = useWorkspacePanelStore((state) =>
     activeTabId && isSessionTabState(activeTabId, activeTabType) && !isMemberSession && !isMobileLayout
       ? state.isPanelOpen(activeTabId)
@@ -300,11 +311,11 @@ export function ActiveSession() {
   if (!activeTabId) return null
 
   return (
-    <div className="flex-1 flex relative overflow-hidden bg-background text-on-surface">
+    <div className="active-session-root flex-1 flex relative overflow-hidden text-on-surface">
       <div data-testid="active-session-content-row" className="flex min-h-0 min-w-0 flex-1">
         <div
           data-testid="active-session-chat-column"
-          className={`flex flex-col ${showWorkspacePanel ? CHAT_COLUMN_WITH_WORKSPACE_CLASS : isMobileLayout ? 'min-w-0 flex-1' : 'min-w-[360px] flex-1'}`}
+          className={`active-session-chat-column ${showWorkspacePanel ? CHAT_COLUMN_WITH_WORKSPACE_CLASS : isMobileLayout ? 'min-w-0 flex-1 flex flex-col' : 'chat-column-standalone flex flex-col'}`}
         >
           {isMemberSession && (
             <div className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface-container)]">
@@ -365,11 +376,11 @@ export function ActiveSession() {
                   </>
                 ) : (
                   <>
-                    <img src="/app-icon.png" alt="cchahatui" className="mb-6 h-24 w-24" />
-                    <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-[var(--color-text-primary)]" style={{ fontFamily: 'var(--font-headline)' }}>
+                    <img src="/app-icon.png" alt="cchahatui" className="mb-5 h-16 w-16 opacity-95" />
+                    <h1 className="mb-2 text-[25px] font-bold tracking-normal text-[var(--color-text-primary)]" style={{ fontFamily: 'var(--font-headline)' }}>
                       {t('empty.title')}
                     </h1>
-                    <p className="mx-auto max-w-xs text-[var(--color-text-secondary)]" style={{ fontFamily: 'var(--font-body)' }}>
+                    <p className="mx-auto max-w-[20rem] text-sm leading-6 text-[var(--color-text-secondary)]" style={{ fontFamily: 'var(--font-body)' }}>
                       {t('empty.subtitle')}
                     </p>
                   </>
@@ -382,8 +393,8 @@ export function ActiveSession() {
                 <div
                   className={
                     showWorkspacePanel
-                      ? 'flex w-full items-center border-b border-[var(--color-border)]/70 px-4 py-3'
-                      : 'mx-auto flex w-full max-w-[860px] items-center border-b border-outline-variant/10 px-8 py-3'
+                      ? 'active-session-header active-session-header--compact flex w-full items-center border-b border-[var(--color-border)]/70 px-4 py-2.5'
+                      : 'active-session-header mx-auto flex w-full chat-content-width items-center border-b border-outline-variant/10 px-8 py-3'
                   }
                 >
                   <div className="min-w-0 flex-1">
@@ -437,6 +448,22 @@ export function ActiveSession() {
                       </div>
                     )}
                   </div>
+                  {sessionProjectPath ? (
+                    <button
+                      type="button"
+                      data-testid="active-session-project-memory-button"
+                      data-memory-state={projectMemorySaved ? 'saved' : 'empty'}
+                      onClick={() => window.dispatchEvent(new CustomEvent('cchahatui:open-project-memory'))}
+                      className="ml-3 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-[12px] font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)]"
+                      aria-label={t('sidebar.openProjectMemory', { project: sessionProjectTitle })}
+                      title={t('sidebar.openProjectMemory', { project: sessionProjectTitle })}
+                    >
+                      <span className={`material-symbols-outlined text-[16px] ${projectMemorySaved ? 'text-[var(--color-brand)]' : ''}`}>psychology_alt</span>
+                      {!showWorkspacePanel && (
+                        <span>{projectMemorySaved ? t('sidebar.projectMemoryBadge') : t('sidebar.projectMemory')}</span>
+                      )}
+                    </button>
+                  ) : null}
                 </div>
               )}
 

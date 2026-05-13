@@ -136,6 +136,17 @@ describe('AppShell boot flow', () => {
     expect(screen.getByText('updates loaded')).toBeInTheDocument()
   })
 
+  it('opens shortcut help from the global shortcut event', async () => {
+    render(<AppShell />)
+
+    await screen.findByText('sidebar loaded')
+
+    fireEvent(window, new CustomEvent('cchahatui:open-shortcuts-help'))
+
+    expect(await screen.findByRole('dialog', { name: 'shortcuts.title' })).toBeInTheDocument()
+    expect(screen.getByText('shortcuts.openHelp')).toBeInTheDocument()
+  })
+
   it('shows startup diagnostics instead of a blank shell when bootstrap fails', async () => {
     mocks.fetchAll.mockRejectedValueOnce(new Error('settings file could not be read'))
 

@@ -21,6 +21,7 @@ import { useTranslation } from '../../i18n'
 import { H5ConnectionView } from './H5ConnectionView'
 import { useMobileViewport } from '../../hooks/useMobileViewport'
 import type { Tab } from '../../stores/tabStore'
+import { ShortcutHelpDialog } from './ShortcutHelpDialog'
 
 function isChatTab(tab: Tab | undefined) {
   return tab?.type === 'session'
@@ -36,6 +37,7 @@ export function AppShell() {
   const [h5StartupError, setH5StartupError] = useState<H5ConnectionRequiredError | null>(null)
   const [bootstrapNonce, setBootstrapNonce] = useState(0)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false)
   const t = useTranslation()
   const tauriRuntime = isTauriRuntime()
   const isMobileShell = useMobileViewport() && !tauriRuntime
@@ -131,6 +133,12 @@ export function AppShell() {
   }, [])
 
   useKeyboardShortcuts()
+
+  useEffect(() => {
+    const openShortcutHelp = () => setShortcutHelpOpen(true)
+    window.addEventListener('cchahatui:open-shortcuts-help', openShortcutHelp)
+    return () => window.removeEventListener('cchahatui:open-shortcuts-help', openShortcutHelp)
+  }, [])
 
   useEffect(() => {
     if (isMobileShell && !wasMobileShellRef.current) {
@@ -273,6 +281,7 @@ export function AppShell() {
       </main>
       <ToastContainer />
       <UpdateChecker />
+      <ShortcutHelpDialog open={shortcutHelpOpen} onClose={() => setShortcutHelpOpen(false)} />
     </div>
   )
 }

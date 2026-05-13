@@ -774,9 +774,9 @@ export function WorkspacePanel({ sessionId }: WorkspacePanelProps) {
   if (!isOpen) return null
 
   const hasPreviewTabs = previewTabs.length > 0
-  const panelWidth = hasPreviewTabs ? width : Math.min(width, 520)
-  const panelMaxWidth = hasPreviewTabs ? 'min(62%, calc(100% - 328px))' : '36%'
-  const panelMinWidth = hasPreviewTabs ? 'min(420px, 54%)' : 'min(340px, 40%)'
+  const panelWidth = hasPreviewTabs ? width : Math.min(width, 500)
+  const panelMaxWidth = hasPreviewTabs ? 'min(60%, calc(100% - 336px))' : '35%'
+  const panelMinWidth = hasPreviewTabs ? 'min(420px, 54%)' : 'min(320px, 40%)'
 
   const handleRefresh = () => {
     void loadStatus(sessionId)
@@ -1129,7 +1129,7 @@ export function WorkspacePanel({ sessionId }: WorkspacePanelProps) {
   return (
     <aside
       data-testid="workspace-panel"
-      className="flex h-full shrink-0 border-l border-[var(--color-border)] bg-[var(--color-surface)]"
+      className="workspace-panel-surface flex h-full shrink-0 border-l border-[var(--color-border)]"
       style={{ width: panelWidth, maxWidth: panelMaxWidth, minWidth: panelMinWidth }}
     >
       {hasPreviewTabs && (

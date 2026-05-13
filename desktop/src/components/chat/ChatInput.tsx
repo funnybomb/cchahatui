@@ -12,7 +12,7 @@ import {
   useWorkspaceChatContextStore,
   type WorkspaceChatReference,
 } from '../../stores/workspaceChatContextStore'
-import { formatProjectMemoryPrompt, useProjectMemoryStore } from '../../stores/projectMemoryStore'
+import { formatProjectMemoryPrompt, hasProjectMemory, useProjectMemoryStore } from '../../stores/projectMemoryStore'
 import { sessionsApi, type SessionGitInfo } from '../../api/sessions'
 import { PermissionModeSelector } from '../controls/PermissionModeSelector'
 import { ModelSelector } from '../controls/ModelSelector'
@@ -469,8 +469,8 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
     const workspaceReferencePrompt = !isMemberSession
       ? formatWorkspaceReferencePrompt(workspaceReferences)
       : ''
-    const projectMemoryPrompt = !isMemberSession && projectMemory?.summary
-      ? formatProjectMemoryPrompt(projectNameFromPath(activeProjectPath), projectMemory.summary)
+    const projectMemoryPrompt = !isMemberSession && hasProjectMemory(projectMemory)
+      ? formatProjectMemoryPrompt(projectNameFromPath(activeProjectPath), projectMemory)
       : ''
     const contentForModel = [projectMemoryPrompt, workspaceReferencePrompt, text].filter(Boolean).join('\n\n')
     const displayContent = text || (
@@ -747,16 +747,16 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
             ? 'mx-auto flex w-full max-w-3xl flex-col'
           : compact
               ? 'mx-auto max-w-full'
-              : `${isMobileComposer ? 'mx-0 max-w-none' : 'mx-auto max-w-[860px]'}`
+              : `${isMobileComposer ? 'mx-0 max-w-none' : 'mx-auto chat-content-width'}`
         }
       >
         <div
           data-testid="chat-input-panel"
           className={isHeroComposer
-            ? 'glass-panel relative flex flex-col gap-3 rounded-t-xl rounded-b-none p-4 transition-colors'
+            ? 'glass-panel chat-composer-panel relative flex flex-col gap-3 rounded-t-xl rounded-b-none p-4 transition-colors'
             : compact
-              ? `glass-panel relative p-3 transition-colors ${isMobileComposer ? 'rounded-2xl shadow-[0_-12px_36px_rgba(54,35,28,0.12)]' : 'rounded-xl'}`
-              : `glass-panel relative transition-colors ${isMobileComposer ? 'rounded-2xl p-3 shadow-[0_-12px_36px_rgba(54,35,28,0.12)]' : 'rounded-xl p-4'}`}
+              ? `glass-panel chat-composer-panel relative p-3 transition-colors ${isMobileComposer ? 'rounded-2xl shadow-[0_-12px_36px_rgba(54,35,28,0.12)]' : 'rounded-xl'}`
+              : `glass-panel chat-composer-panel relative transition-colors ${isMobileComposer ? 'rounded-2xl p-3 shadow-[0_-12px_36px_rgba(54,35,28,0.12)]' : 'rounded-xl p-4'}`}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
         >

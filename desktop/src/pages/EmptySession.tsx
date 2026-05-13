@@ -8,7 +8,7 @@ import { useSessionRuntimeStore, DRAFT_RUNTIME_SELECTION_KEY } from '../stores/s
 import { useSettingsStore } from '../stores/settingsStore'
 import { useUIStore } from '../stores/uiStore'
 import { SETTINGS_TAB_ID, useTabStore } from '../stores/tabStore'
-import { formatProjectMemoryPrompt, useProjectMemoryStore } from '../stores/projectMemoryStore'
+import { formatProjectMemoryPrompt, hasProjectMemory, useProjectMemoryStore } from '../stores/projectMemoryStore'
 import { RepositoryLaunchControls } from '../components/shared/RepositoryLaunchControls'
 import { PermissionModeSelector } from '../components/controls/PermissionModeSelector'
 import { ModelSelector } from '../components/controls/ModelSelector'
@@ -302,8 +302,8 @@ export function EmptySession() {
         mimeType: attachment.mimeType,
       }))
       if (text || attachmentPayload.length > 0) {
-        const projectMemoryPrompt = text && projectMemory?.summary
-          ? formatProjectMemoryPrompt(projectNameFromPath(workDir), projectMemory.summary)
+        const projectMemoryPrompt = text && hasProjectMemory(projectMemory)
+          ? formatProjectMemoryPrompt(projectNameFromPath(workDir), projectMemory)
           : ''
         const contentForModel = [projectMemoryPrompt, text].filter(Boolean).join('\n\n')
         sendMessage(sessionId, contentForModel, attachmentPayload, {

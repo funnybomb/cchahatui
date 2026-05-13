@@ -112,6 +112,44 @@ describe('coverage gate helpers', () => {
     expect(failures).toEqual(['changed-lines: coverage 50% is below minimum 90%'])
   })
 
+  test('ignores excluded changed files when evaluating changed-line coverage', () => {
+    const changedLines = parseChangedLinesFromDiff([
+      'diff --git a/desktop/src/theme/globals.css b/desktop/src/theme/globals.css',
+      '--- a/desktop/src/theme/globals.css',
+      '+++ b/desktop/src/theme/globals.css',
+      '@@ -1,0 +1,2 @@',
+      '+.sidebar { width: 304px; }',
+      '+.content { max-width: 980px; }',
+      'diff --git a/desktop/src/App.tsx b/desktop/src/App.tsx',
+      '--- a/desktop/src/App.tsx',
+      '+++ b/desktop/src/App.tsx',
+      '@@ -5,0 +6,1 @@',
+      '+export const appReady = true',
+    ].join('\n'))
+
+    const changedCoverage = evaluateChangedLineCoverage(
+      changedLines,
+      new Map([
+        ['desktop/src/App.tsx', {
+          suiteId: 'desktop',
+          executableLines: new Set([6]),
+          coveredLines: new Set([6]),
+        }],
+      ]),
+      [{
+        id: 'desktop',
+        title: 'Desktop React',
+        includePrefixes: ['desktop/src/'],
+        excludeSuffixes: ['.css'],
+      }],
+      90,
+    )
+
+    expect(changedCoverage.total).toBe(1)
+    expect(changedCoverage.files.map((file) => file.file)).toEqual(['desktop/src/App.tsx'])
+    expect(changedCoverage.failures).toEqual([])
+  })
+
   test('reports minimum threshold failures', () => {
     const failures = evaluateThresholds([
       {

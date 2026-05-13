@@ -65,6 +65,7 @@ import { useTeamStore } from '../stores/teamStore'
 import { useWorkspacePanelStore } from '../stores/workspacePanelStore'
 import { WORKSPACE_PANEL_DEFAULT_WIDTH } from '../stores/workspacePanelStore'
 import { useTerminalPanelStore } from '../stores/terminalPanelStore'
+import { useProjectMemoryStore } from '../stores/projectMemoryStore'
 import {
   TERMINAL_PANEL_DEFAULT_HEIGHT,
   TERMINAL_PANEL_MAX_HEIGHT,
@@ -82,6 +83,7 @@ afterEach(() => {
   useTeamStore.setState({ teams: [], activeTeam: null, memberColors: new Map(), error: null })
   useWorkspacePanelStore.setState(useWorkspacePanelStore.getInitialState(), true)
   useTerminalPanelStore.setState(useTerminalPanelStore.getInitialState(), true)
+  useProjectMemoryStore.setState(useProjectMemoryStore.getInitialState(), true)
 })
 
 describe('ActiveSession task polling', () => {
@@ -426,7 +428,7 @@ describe('ActiveSession task polling', () => {
     expect(within(contentRow).getByTestId('workspace-panel')).toHaveTextContent(`workspace:${sessionId}`)
     expect(within(chatColumn).getByTestId('chat-input')).toBeInTheDocument()
     expect(within(chatColumn).getByTestId('chat-input')).toHaveAttribute('data-compact', 'true')
-    expect(chatColumn).toHaveClass('flex-1')
+    expect(chatColumn).toHaveClass('chat-column-with-workspace')
     expect(chatColumn).not.toHaveClass('shrink-0')
     expect(contentRow.children[0]).toBe(chatColumn)
     expect(contentRow.children[1]).toBe(resizeHandle)
@@ -437,6 +439,65 @@ describe('ActiveSession task polling', () => {
     })
 
     expect(useWorkspacePanelStore.getState().width).toBe(WORKSPACE_PANEL_DEFAULT_WIDTH + 32)
+  })
+
+  it('exposes project memory from the active project header', () => {
+    const sessionId = 'memory-session'
+    const listener = vi.fn()
+    window.addEventListener('cchahatui:open-project-memory', listener)
+    useProjectMemoryStore.getState().setMemory('/tmp/project', 'Prefer narrow desktop tests.')
+
+    useSessionStore.setState({
+      sessions: [{
+        id: sessionId,
+        title: 'Memory Session',
+        createdAt: '2026-04-10T00:00:00.000Z',
+        modifiedAt: '2026-04-10T00:00:00.000Z',
+        messageCount: 1,
+        projectPath: '/tmp/project',
+        workDir: '/tmp/project',
+        workDirExists: true,
+      }],
+      activeSessionId: sessionId,
+      isLoading: false,
+      error: null,
+    })
+    useTabStore.setState({
+      tabs: [{ sessionId, title: 'Memory Session', type: 'session', status: 'idle' }],
+      activeTabId: sessionId,
+    })
+    useChatStore.setState({
+      sessions: {
+        [sessionId]: {
+          messages: [{ id: 'msg-1', type: 'assistant_text', content: 'hello', timestamp: 1 }],
+          chatState: 'idle',
+          connectionState: 'connected',
+          streamingText: '',
+          streamingToolInput: '',
+          activeToolUseId: null,
+          activeToolName: null,
+          activeThinkingId: null,
+          pendingPermission: null,
+          pendingComputerUsePermission: null,
+          tokenUsage: { input_tokens: 0, output_tokens: 0 },
+          elapsedSeconds: 0,
+          statusVerb: '',
+          slashCommands: [],
+          agentTaskNotifications: {},
+          elapsedTimer: null,
+        },
+      },
+    })
+
+    render(<ActiveSession />)
+
+    const memoryButton = screen.getByTestId('active-session-project-memory-button')
+    expect(memoryButton).toHaveAttribute('data-memory-state', 'saved')
+
+    fireEvent.click(memoryButton)
+
+    expect(listener).toHaveBeenCalled()
+    window.removeEventListener('cchahatui:open-project-memory', listener)
   })
 
   it('does not render the workspace panel when closed or for member sessions', () => {

@@ -458,13 +458,35 @@ describe('ChatInput file mentions', () => {
         attachments: [],
       })
     })
-    expect(mocks.wsSend.mock.calls[0]?.[1].content).toContain('<project-memory>')
+    expect(mocks.wsSend.mock.calls[0]?.[1].content).toContain('<project-memory')
     const messages = useChatStore.getState().sessions[sessionId]?.messages ?? []
     expect(messages[messages.length - 1]).toMatchObject({
       type: 'user_text',
       content: 'ship the sidebar',
       modelContent: expect.stringContaining('Prefer DeepSeek V4 for this project.'),
     })
+  })
+
+  it('does not add project memory to model content when reuse is disabled', async () => {
+    useProjectMemoryStore.getState().setMemory('/repo', 'Keep this saved.', {
+      facts: ['Do not inject this.'],
+    }, false)
+
+    render(<ChatInput compact />)
+
+    const input = screen.getByRole('textbox') as HTMLTextAreaElement
+    fireEvent.change(input, { target: { value: 'ship without memory', selectionStart: 19 } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(mocks.wsSend).toHaveBeenCalledWith(sessionId, {
+        type: 'user_message',
+        content: 'ship without memory',
+        attachments: [],
+      })
+    })
+    expect(mocks.wsSend.mock.calls[0]?.[1].content).not.toContain('<project-memory')
+    expect(mocks.wsSend.mock.calls[0]?.[1].content).not.toContain('Keep this saved.')
   })
 
   it('uses larger icon-only mobile action buttons for browser H5 access', async () => {

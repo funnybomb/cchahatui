@@ -49,6 +49,12 @@ describe('desktop persistence migrations', () => {
       '/workspace/project-a': 'Remember to use DeepSeek V4.',
       '/workspace/project-b': {
         summary: 'Prefer the desktop smoke lane.',
+        sections: {
+          facts: ['Use Bun.', 'Use Bun.'],
+          decisions: ['Keep narrow slices.'],
+          openTasks: ['Run verify.'],
+        },
+        includeInContext: false,
         updatedAt: '2026-05-01T00:00:00.000Z',
       },
       '/workspace/empty': '',
@@ -58,17 +64,31 @@ describe('desktop persistence migrations', () => {
 
     expect(report.migratedKeys).toContain('cc-haha-project-memory')
     expect(JSON.parse(window.localStorage.getItem('cc-haha-project-memory') || '{}')).toEqual({
-      version: 1,
+      version: 3,
       projects: {
         '/workspace/project-a': {
           projectPath: '/workspace/project-a',
           summary: 'Remember to use DeepSeek V4.',
+          sections: {
+            facts: [],
+            decisions: [],
+            openTasks: [],
+          },
+          includeInContext: true,
           updatedAt: expect.any(String),
+          source: 'manual',
         },
         '/workspace/project-b': {
           projectPath: '/workspace/project-b',
           summary: 'Prefer the desktop smoke lane.',
+          sections: {
+            facts: ['Use Bun.'],
+            decisions: ['Keep narrow slices.'],
+            openTasks: ['Run verify.'],
+          },
+          includeInContext: false,
           updatedAt: '2026-05-01T00:00:00.000Z',
+          source: 'manual',
         },
       },
     })

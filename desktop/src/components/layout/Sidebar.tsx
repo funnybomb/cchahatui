@@ -8,7 +8,9 @@ import { ConfirmDialog } from '../shared/ConfirmDialog'
 import type { SessionListItem } from '../../types/session'
 import { useTabStore, SETTINGS_TAB_ID, SCHEDULED_TAB_ID } from '../../stores/tabStore'
 import { useChatStore } from '../../stores/chatStore'
-import { useProjectMemoryStore } from '../../stores/projectMemoryStore'
+import { hasProjectMemory, useProjectMemoryStore } from '../../stores/projectMemoryStore'
+import { useProjectNavigationStore } from '../../stores/projectNavigationStore'
+import { projectsApi } from '../../api/projects'
 
 const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 const isWindows = typeof navigator !== 'undefined' && /Win/.test(navigator.platform)
@@ -21,6 +23,8 @@ type ProjectGroup = {
   sessions: SessionListItem[]
   modifiedAt: number
   missingCount: number
+  pinned: boolean
+  empty: boolean
 }
 
 type SidebarProps = {
@@ -36,6 +40,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   const t = useTranslation()
   const sessions = useSessionStore((s) => s.sessions)
   const selectedProjects = useSessionStore((s) => s.selectedProjects)
+  const availableProjects = useSessionStore((s) => s.availableProjects)
   const isLoading = useSessionStore((s) => s.isLoading)
   const error = useSessionStore((s) => s.error)
   const fetchSessions = useSessionStore((s) => s.fetchSessions)
@@ -58,6 +63,8 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   const chatSessions = useChatStore((s) => s.sessions)
   const disconnectSession = useChatStore((s) => s.disconnectSession)
   const projectMemories = useProjectMemoryStore((s) => s.memories)
+  const pinnedProjectPaths = useProjectNavigationStore((s) => s.pinnedProjectPaths)
+  const togglePinnedProject = useProjectNavigationStore((s) => s.togglePinned)
   const [searchQuery, setSearchQuery] = useState('')
   const [contextMenu, setContextMenu] = useState<SidebarContextMenu | null>(null)
   const [pendingDeleteSessionId, setPendingDeleteSessionId] = useState<string | null>(null)
@@ -97,7 +104,17 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
     return result
   }, [sessions, selectedProjects, searchQuery])
 
-  const projectGroups = useMemo(() => groupByProject(filteredSessions, t('sidebar.other')), [filteredSessions, t])
+  const emptyProjectPaths = selectedProjects.length > 0 ? selectedProjects : availableProjects
+  const projectGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return groupByProject(filteredSessions, t('sidebar.other'), emptyProjectPaths, pinnedProjectPaths)
+      .filter((group) => {
+        if (!q) return true
+        return group.sessions.length > 0 ||
+          group.title.toLowerCase().includes(q) ||
+          group.key.toLowerCase().includes(q)
+      })
+  }, [emptyProjectPaths, filteredSessions, pinnedProjectPaths, searchQuery, t])
   const showInitialLoading = isLoading && sessions.length === 0
   const filteredSessionIds = useMemo(() => filteredSessions.map((session) => session.id), [filteredSessions])
   const selectedCount = selectedSessionIds.size
@@ -105,6 +122,10 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
     () => new Map(sessions.map((session) => [session.id, session])),
     [sessions],
   )
+  const activeProjectPath = useMemo(() => {
+    const activeSession = activeTabId ? sessionsById.get(activeTabId) : null
+    return activeSession ? getSessionProjectPath(activeSession) : ''
+  }, [activeTabId, sessionsById])
   const pendingBatchDeleteSessions = useMemo(
     () => (pendingBatchDeleteSessionIds ?? [])
       .map((sessionId) => sessionsById.get(sessionId))
@@ -118,6 +139,14 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
     setContextMenu({ kind: 'session', id, x: e.clientX, y: e.clientY })
   }, [isBatchMode])
 
+  const handleSessionActionsClick = useCallback((e: React.MouseEvent<HTMLElement>, id: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isBatchMode) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setContextMenu({ kind: 'session', id, x: rect.left, y: rect.bottom + 4 })
+  }, [isBatchMode])
+
   const handleProjectContextMenu = useCallback((e: React.MouseEvent, group: ProjectGroup) => {
     if (isBatchMode || group.key === UNSCOPED_PROJECT_KEY) return
     e.preventDefault()
@@ -127,6 +156,20 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
       title: group.title,
       x: e.clientX,
       y: e.clientY,
+    })
+  }, [isBatchMode])
+
+  const handleProjectActionsClick = useCallback((e: React.MouseEvent<HTMLElement>, group: ProjectGroup) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isBatchMode || group.key === UNSCOPED_PROJECT_KEY) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setContextMenu({
+      kind: 'project',
+      projectPath: group.key,
+      title: group.title,
+      x: rect.left,
+      y: rect.bottom + 4,
     })
   }, [isBatchMode])
 
@@ -275,6 +318,21 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
       setContextMenu(null)
     }
   }, [addToast, t])
+
+  const forgetProject = useCallback(async (projectPath: string) => {
+    try {
+      await projectsApi.removeProject(projectPath)
+      await fetchSessions()
+      addToast({ type: 'success', message: t('sidebar.projectForgotten') })
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : t('sidebar.projectForgetFailed'),
+      })
+    } finally {
+      setContextMenu(null)
+    }
+  }, [addToast, fetchSessions, t])
 
   useEffect(() => {
     const openProjectMemory = () => {
@@ -530,24 +588,49 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
               {projectGroups.map((group) => {
                 const groupIds = group.sessions.map((session) => session.id)
                 const groupSelectedCount = groupIds.filter((id) => selectedSessionIds.has(id)).length
-                const hasMemory = Boolean(projectMemories[group.key]?.summary)
+                const hasMemory = hasProjectMemory(projectMemories[group.key])
                 const isScopedProject = group.key !== UNSCOPED_PROJECT_KEY
                 return (
-                  <div key={group.key} className="mb-2 pt-2">
+                  <div
+                    key={group.key}
+                    data-testid="sidebar-project-group"
+                    data-project-state={group.missingCount > 0 ? 'missing' : group.empty ? 'empty' : 'ready'}
+                    data-pinned={group.pinned ? 'true' : 'false'}
+                    data-memory-state={hasMemory ? 'saved' : 'empty'}
+                    className="sidebar-project-group mb-2 pt-1"
+                  >
                     <div
-                      className="group/project flex items-center justify-between gap-2 px-1.5 pb-1 pt-2"
+                      className="sidebar-project-header group/project flex items-center justify-between gap-2 px-2 pb-1.5 pt-2"
                       onContextMenu={(event) => handleProjectContextMenu(event, group)}
                     >
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="material-symbols-outlined flex-shrink-0 text-[18px] text-[var(--color-text-tertiary)]">
+                        <span className={`material-symbols-outlined flex-shrink-0 text-[18px] ${group.missingCount > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-tertiary)]'}`}>
                           folder
                         </span>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-[var(--color-text-primary)]" title={isScopedProject ? group.key : undefined}>
+                          <div className="truncate text-[13px] font-semibold leading-5 text-[var(--color-text-primary)]" title={isScopedProject ? group.key : undefined}>
                             {group.title}
                           </div>
-                          <div className="truncate text-[11px] text-[var(--color-text-tertiary)]">
-                            {t('sidebar.projectSessionCount', { count: group.sessions.length })}
+                          <div className="flex min-w-0 items-center gap-1.5 truncate text-[11px] leading-4 text-[var(--color-text-tertiary)]">
+                            {group.pinned ? (
+                              <span className="inline-flex shrink-0 items-center rounded-[5px] bg-[var(--color-surface-container)] px-1.5 py-0.5 text-[9px] font-semibold uppercase text-[var(--color-text-secondary)]">
+                                {t('sidebar.projectPinned')}
+                              </span>
+                            ) : null}
+                            {group.key === activeProjectPath ? (
+                              <span className="inline-flex shrink-0 items-center rounded-[5px] bg-[var(--color-primary-fixed)] px-1.5 py-0.5 text-[9px] font-semibold uppercase text-[var(--color-primary)]">
+                                {t('sidebar.projectActive')}
+                              </span>
+                            ) : null}
+                            <span className="truncate">
+                              {group.empty ? t('sidebar.projectNoSessions') : t('sidebar.projectSessionCount', { count: group.sessions.length })}
+                            </span>
+                            {hasMemory ? (
+                              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-[5px] bg-[var(--color-primary-fixed)] px-1.5 py-0.5 text-[9px] font-semibold uppercase text-[var(--color-primary)]">
+                                <span className="material-symbols-outlined text-[11px]">psychology_alt</span>
+                                {t('sidebar.projectMemoryBadge')}
+                              </span>
+                            ) : null}
                             {group.missingCount > 0 ? ` · ${t('sidebar.projectMissingCount', { count: group.missingCount })}` : ''}
                           </div>
                         </div>
@@ -596,14 +679,34 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                             >
                               <span className="material-symbols-outlined text-[17px]">add</span>
                             </button>
+                            <button
+                              type="button"
+                              onClick={(event) => handleProjectActionsClick(event, group)}
+                              disabled={!isScopedProject}
+                              className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] disabled:cursor-not-allowed disabled:opacity-40"
+                              aria-label={t('sidebar.projectActions', { project: group.title })}
+                              title={t('sidebar.projectActions', { project: group.title })}
+                            >
+                              <span className="material-symbols-outlined text-[17px]">more_horiz</span>
+                            </button>
                           </>
                         )}
                       </div>
                     </div>
+                    {group.empty ? (
+                      <button
+                        type="button"
+                        onClick={() => void createSessionForProject(isScopedProject ? group.key : undefined)}
+                        className="ml-8 mr-2 mb-1 flex w-[calc(100%-2.5rem)] items-center gap-2 rounded-[9px] px-3 py-2 text-left text-[12px] font-medium text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-sidebar-item-hover)] hover:text-[var(--color-text-primary)]"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">add</span>
+                        <span>{t('sidebar.projectCreateFirstSession')}</span>
+                      </button>
+                    ) : null}
                     {group.sessions.map((session) => {
                       const sessionChatState = chatSessions[session.id]?.chatState ?? 'idle'
                       return (
-                        <div key={session.id} className="relative">
+                        <div key={session.id} className="sidebar-session-row group/session relative pl-4">
                           {renamingId === session.id ? (
                             <input
                               autoFocus
@@ -632,7 +735,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                               }}
                               onContextMenu={(e) => handleSessionContextMenu(e, session.id)}
                               className={`
-                                group w-full rounded-[10px] px-3 ${isMobile ? 'py-3' : 'py-2'} text-left text-sm transition-colors duration-200
+                                group w-full rounded-[10px] px-3 ${isMobile ? 'py-3' : 'py-1.5'} text-left text-sm transition-colors duration-200
                                 ${selectedSessionIds.has(session.id)
                                   ? 'bg-[var(--color-sidebar-item-active)] text-[var(--color-text-primary)] ring-1 ring-[var(--color-brand)]/15'
                                   : session.id === activeTabId
@@ -665,7 +768,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                                     }}
                                   />
                                 )}
-                                <span className="flex-1 truncate font-medium tracking-[-0.01em]">{session.title || 'Untitled'}</span>
+                                <span className="flex-1 truncate text-[13px] font-medium tracking-normal">{session.title || 'Untitled'}</span>
                                 {!session.workDirExists && (
                                   <span
                                     className="flex-shrink-0 text-[10px] text-[var(--color-warning)]"
@@ -690,6 +793,17 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                               </span>
                             </button>
                           )}
+                          {renamingId !== session.id && !isBatchMode ? (
+                            <button
+                              type="button"
+                              onClick={(event) => handleSessionActionsClick(event, session.id)}
+                              className="absolute right-1 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md bg-[var(--color-surface)]/90 text-[var(--color-text-tertiary)] opacity-100 shadow-sm transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] md:opacity-0 md:group-hover/session:opacity-100 md:focus-visible:opacity-100"
+                              aria-label={t('sidebar.sessionActions', { session: session.title || 'Untitled' })}
+                              title={t('sidebar.sessionActions', { session: session.title || 'Untitled' })}
+                            >
+                              <span className="material-symbols-outlined text-[17px]">more_horiz</span>
+                            </button>
+                          ) : null}
                         </div>
                       )
                     })}
@@ -705,6 +819,16 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
 
       {!isMobile && (
         <div className={`border-t border-[var(--color-border)] p-3 ${expanded ? '' : 'flex justify-center'}`}>
+          <NavItem
+            active={false}
+            collapsed={!expanded}
+            label={t('shortcuts.title')}
+            touchFriendly={isMobile}
+            onClick={() => window.dispatchEvent(new CustomEvent('cchahatui:open-shortcuts-help'))}
+            icon={<span className="material-symbols-outlined text-[18px]">keyboard</span>}
+          >
+            {t('shortcuts.title')}
+          </NavItem>
           <NavItem
             active={activeTabId === SETTINGS_TAB_ID}
             collapsed={!expanded}
@@ -755,6 +879,17 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
             <>
               <button
                 onClick={() => {
+                  togglePinnedProject(contextMenu.projectPath)
+                  setContextMenu(null)
+                }}
+                className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {useProjectNavigationStore.getState().isPinned(contextMenu.projectPath)
+                  ? t('sidebar.projectUnpin')
+                  : t('sidebar.projectPin')}
+              </button>
+              <button
+                onClick={() => {
                   const projectPath = contextMenu.projectPath
                   setContextMenu(null)
                   void createSessionForProject(projectPath)
@@ -777,6 +912,12 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                 className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
               >
                 {t('sidebar.copyProjectPath')}
+              </button>
+              <button
+                onClick={() => void forgetProject(contextMenu.projectPath)}
+                className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-error)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {t('sidebar.projectForget')}
               </button>
             </>
           )}
@@ -848,8 +989,14 @@ function getProjectTitle(projectPath: string, fallback: string): string {
   return parts[parts.length - 1] || normalized || fallback
 }
 
-function groupByProject(sessions: SessionListItem[], fallbackTitle: string): ProjectGroup[] {
+function groupByProject(
+  sessions: SessionListItem[],
+  fallbackTitle: string,
+  projectPaths: string[],
+  pinnedProjectPaths: string[],
+): ProjectGroup[] {
   const groups = new Map<string, ProjectGroup>()
+  const pinnedSet = new Set(pinnedProjectPaths)
 
   for (const session of sessions) {
     const key = getSessionProjectPath(session)
@@ -860,11 +1007,28 @@ function groupByProject(sessions: SessionListItem[], fallbackTitle: string): Pro
       sessions: [],
       modifiedAt,
       missingCount: 0,
+      pinned: pinnedSet.has(key),
+      empty: false,
     }
     group.sessions.push(session)
     group.modifiedAt = Math.max(group.modifiedAt, Number.isFinite(modifiedAt) ? modifiedAt : 0)
+    group.pinned = pinnedSet.has(key)
+    group.empty = false
     if (session.workDirExists === false) group.missingCount += 1
     groups.set(key, group)
+  }
+
+  for (const projectPath of projectPaths) {
+    if (!projectPath || groups.has(projectPath)) continue
+    groups.set(projectPath, {
+      key: projectPath,
+      title: getProjectTitle(projectPath, fallbackTitle),
+      sessions: [],
+      modifiedAt: 0,
+      missingCount: 0,
+      pinned: pinnedSet.has(projectPath),
+      empty: true,
+    })
   }
 
   return [...groups.values()]
@@ -874,7 +1038,11 @@ function groupByProject(sessions: SessionListItem[], fallbackTitle: string): Pro
         new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()
       )),
     }))
-    .sort((a, b) => b.modifiedAt - a.modifiedAt)
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+      if (a.empty !== b.empty) return a.empty ? 1 : -1
+      return b.modifiedAt - a.modifiedAt
+    })
 }
 
 function NavItem({

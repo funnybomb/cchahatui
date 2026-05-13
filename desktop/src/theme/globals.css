@@ -162,10 +162,12 @@
   color-scheme: light;
 
   /* Layout dimensions */
-  --sidebar-width: 280px;
-  --sidebar-rail-width: 72px;
+  --sidebar-width: 304px;
+  --sidebar-rail-width: 66px;
   --titlebar-height: 40px;
   --statusbar-height: 36px;
+  --content-max-width: 900px;
+  --content-compact-max-width: 760px;
   --motion-sidebar-duration: 280ms;
   --motion-sidebar-easing: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -473,10 +475,12 @@ html, body, #root {
   margin: 0;
   padding: 0;
   font-family: var(--font-body);
+  font-size: 14px;
   color: var(--color-on-surface);
   background-color: var(--color-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 ::selection {
@@ -514,6 +518,85 @@ button, input, textarea, select, a, [role="button"] {
 
 .glass-panel:focus-within {
   box-shadow: var(--shadow-focus-ring), var(--shadow-dropdown);
+}
+
+.active-session-root {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-container-lowest) 54%, transparent), transparent 220px),
+    var(--color-surface);
+}
+
+.active-session-chat-column {
+  background: var(--color-surface);
+}
+
+.active-session-header {
+  min-height: 58px;
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-container-low));
+  backdrop-filter: blur(12px);
+}
+
+.active-session-header--compact {
+  min-height: 54px;
+}
+
+.chat-column-with-workspace {
+  min-width: 336px;
+  flex: 1 1 0%;
+  border-right: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  background: var(--color-surface);
+}
+
+.chat-column-standalone {
+  min-width: 360px;
+  flex: 1 1 0%;
+}
+
+.chat-content-width {
+  max-width: var(--content-max-width);
+}
+
+.chat-composer-panel {
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--color-border) 36%, transparent),
+    0 16px 42px rgba(34, 26, 22, 0.09);
+}
+
+.workspace-panel-surface {
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-container-low));
+}
+
+.sidebar-project-group {
+  border-radius: 12px;
+  transition: background-color 160ms ease;
+}
+
+.sidebar-project-group:hover {
+  background: color-mix(in srgb, var(--color-sidebar-item-hover) 76%, transparent);
+}
+
+.sidebar-project-header {
+  min-height: 44px;
+}
+
+.sidebar-session-row {
+  position: relative;
+}
+
+.sidebar-session-row::before {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: color-mix(in srgb, var(--color-border) 58%, transparent);
+  opacity: 0.72;
+}
+
+.sidebar-session-row:first-of-type::before {
+  top: 5px;
 }
 
 .app-shell-viewport {

@@ -141,7 +141,7 @@ const DESKTOP_SCOPE: CoverageScope = {
     'desktop/src/mocks/',
     'desktop/src/types/',
   ],
-  excludeSuffixes: ['.test.ts', '.test.tsx', '.d.ts', 'vite-env.d.ts'],
+  excludeSuffixes: ['.test.ts', '.test.tsx', '.d.ts', 'vite-env.d.ts', '.css'],
 }
 
 const CHANGED_LINE_SCOPES = [

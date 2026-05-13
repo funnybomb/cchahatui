@@ -69,6 +69,12 @@ export function useKeyboardShortcuts() {
         window.dispatchEvent(new CustomEvent('cchahatui:open-project-memory'))
       }
 
+      // Cmd+/ — Open shortcut help
+      if (meta && key === '/') {
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('cchahatui:open-shortcuts-help'))
+      }
+
       // Cmd+1..9 — Switch open tabs
       if (meta && /^[1-9]$/.test(e.key)) {
         const index = Number(e.key) - 1
