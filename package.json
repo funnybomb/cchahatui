@@ -30,8 +30,10 @@
     "quality:baseline": "bun run quality:gate --mode baseline",
     "quality:release": "bun run quality:gate --mode release",
     "quality:smoke": "bun run quality:gate --mode baseline --allow-live --only 'provider-smoke:*' --only 'desktop-smoke:*'",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "docs:update-desktop-preview": "node scripts/docs/update-desktop-preview.mjs",
+    "docs:check-desktop-preview": "node scripts/docs/update-desktop-preview.mjs --check",
+    "docs:dev": "node scripts/docs/update-desktop-preview.mjs && vitepress dev docs",
+    "docs:build": "node scripts/docs/update-desktop-preview.mjs --check && vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {

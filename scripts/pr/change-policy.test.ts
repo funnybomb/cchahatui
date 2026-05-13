@@ -31,6 +31,8 @@ describe('evaluateChangePolicy', () => {
     const result = evaluateChangePolicy([
       'docs/index.md',
       'README.md',
+      'scripts/docs/update-desktop-preview.mjs',
+      '.github/workflows/update-readme-preview.yml',
     ])
 
     expect(result.blocked).toBe(false)

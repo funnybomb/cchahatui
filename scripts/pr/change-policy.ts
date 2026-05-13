@@ -71,6 +71,9 @@ const docsExactPaths = new Set([
   'package.json',
   'package-lock.json',
   '.github/workflows/deploy-docs.yml',
+  '.github/workflows/update-readme-preview.yml',
+  'scripts/docs/update-desktop-preview.mjs',
+  'scripts/docs/update-desktop-preview.test.mjs',
 ])
 
 const releaseExactPaths = new Set([
