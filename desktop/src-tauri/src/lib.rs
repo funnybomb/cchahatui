@@ -221,6 +221,8 @@ const SERVER_STARTUP_LOG_LIMIT: usize = 80;
 const SERVER_BIND_HOST: &str = "0.0.0.0";
 const SERVER_CONTROL_HOST: &str = "127.0.0.1";
 const APP_DISPLAY_NAME: &str = "cchahatui";
+const APP_CONFIG_DIR_NAME: &str = "config";
+const LEGACY_APP_CONFIG_DIR_NAME: &str = "claude";
 const MAIN_WINDOW_LABEL: &str = "main";
 const TRAY_SHOW_ID: &str = "tray_show";
 const TRAY_QUIT_ID: &str = "tray_quit";
@@ -918,13 +920,20 @@ fn apply_app_runtime_environment(env: &mut HashMap<String, String>) {
 }
 
 fn default_claude_config_dir() -> Option<PathBuf> {
+    let app_support_dir = default_app_support_dir()?;
+    let config_dir = app_support_dir.join(APP_CONFIG_DIR_NAME);
+    let legacy_config_dir = app_support_dir.join(LEGACY_APP_CONFIG_DIR_NAME);
+    migrate_legacy_config_dir(&legacy_config_dir, &config_dir);
+    Some(config_dir)
+}
+
+fn default_app_support_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         return home_dir().map(|dir| {
             dir.join("Library")
                 .join("Application Support")
                 .join(APP_DISPLAY_NAME)
-                .join("claude")
         });
     }
 
@@ -933,7 +942,7 @@ fn default_claude_config_dir() -> Option<PathBuf> {
         let base = std::env::var_os("APPDATA")
             .map(PathBuf::from)
             .or_else(|| home_dir().map(|dir| dir.join("AppData").join("Roaming")))?;
-        return Some(base.join(APP_DISPLAY_NAME).join("claude"));
+        return Some(base.join(APP_DISPLAY_NAME));
     }
 
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
@@ -941,7 +950,31 @@ fn default_claude_config_dir() -> Option<PathBuf> {
         let base = std::env::var_os("XDG_CONFIG_HOME")
             .map(PathBuf::from)
             .or_else(|| home_dir().map(|dir| dir.join(".config")))?;
-        Some(base.join(APP_DISPLAY_NAME).join("claude"))
+        Some(base.join(APP_DISPLAY_NAME))
+    }
+}
+
+fn migrate_legacy_config_dir(legacy_config_dir: &Path, config_dir: &Path) {
+    if config_dir.exists() || !legacy_config_dir.exists() {
+        return;
+    }
+
+    if let Some(parent) = config_dir.parent() {
+        if let Err(error) = fs::create_dir_all(parent) {
+            eprintln!(
+                "failed to create cchahatui config parent directory {}: {error}",
+                parent.display()
+            );
+            return;
+        }
+    }
+
+    if let Err(error) = fs::rename(legacy_config_dir, config_dir) {
+        eprintln!(
+            "failed to migrate legacy cchahatui config directory from {} to {}: {error}",
+            legacy_config_dir.display(),
+            config_dir.display()
+        );
     }
 }
 
