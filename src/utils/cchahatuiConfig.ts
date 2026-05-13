@@ -1,5 +1,5 @@
 import { mkdir, rename, stat } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, join, normalize } from 'node:path'
 import { homedir } from 'node:os'
 import { getClaudeConfigHomeDir } from './envUtils.js'
 
@@ -49,16 +49,22 @@ export function getDefaultCchahatuiConfigDir(
 export function getCchahatuiRuntimeConfigDir(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  return env.CLAUDE_CONFIG_DIR || getDefaultCchahatuiConfigDir({ env })
+  const configured = env.CLAUDE_CONFIG_DIR
+  if (configured && !isDefaultClaudeConfigDir(configured)) {
+    return configured
+  }
+  return getDefaultCchahatuiConfigDir({ env })
 }
 
 export function ensureCchahatuiRuntimeConfigDirEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  if (!env.CLAUDE_CONFIG_DIR) {
-    env.CLAUDE_CONFIG_DIR = getDefaultCchahatuiConfigDir({ env })
-  }
+  env.CLAUDE_CONFIG_DIR = getCchahatuiRuntimeConfigDir(env)
   return env.CLAUDE_CONFIG_DIR
+}
+
+export function isDefaultClaudeConfigDir(configDir: string): boolean {
+  return normalize(configDir) === normalize(join(homedir(), '.claude'))
 }
 
 export function getCchahatuiManagedConfigDir(

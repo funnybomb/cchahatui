@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
 import {
   ensureCchahatuiRuntimeConfigDirEnv,
   getDefaultCchahatuiConfigDir,
   getCchahatuiRuntimeConfigDir,
+  isDefaultClaudeConfigDir,
 } from '../cchahatuiConfig.js'
 
 describe('cchahatui runtime config', () => {
@@ -36,6 +38,14 @@ describe('cchahatui runtime config', () => {
 
     expect(getCchahatuiRuntimeConfigDir(env)).toBe('/tmp/explicit')
     expect(ensureCchahatuiRuntimeConfigDirEnv(env)).toBe('/tmp/explicit')
+  })
+
+  test('does not preserve the shared default ~/.claude path', () => {
+    const env = { CLAUDE_CONFIG_DIR: join(homedir(), '.claude') }
+
+    expect(isDefaultClaudeConfigDir(env.CLAUDE_CONFIG_DIR)).toBe(true)
+    expect(getCchahatuiRuntimeConfigDir(env)).toContain(join('cchahatui', 'config'))
+    expect(ensureCchahatuiRuntimeConfigDirEnv(env)).toContain(join('cchahatui', 'config'))
   })
 
   test('sets isolated default when CLAUDE_CONFIG_DIR is absent', () => {
