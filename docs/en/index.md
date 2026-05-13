@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: Claude Code Haha
-  text: Locally Runnable Claude Code
-  tagline: Repaired from leaked source, supports any Anthropic-compatible API endpoint (MiniMax, OpenRouter, etc.)
+  name: cchahatui
+  text: DeepSeek-first desktop AI coding workspace
+  tagline: Built from the public cc-haha and DeepSeek-TUI projects for DeepSeek / OpenAI-compatible model workflows
   image:
-    src: /images/logo-horizontal.png
-    alt: Claude Code Haha
+    src: /images/app-icon.png
+    alt: cchahatui
   actions:
     - theme: brand
       text: Quick Start
       link: /en/guide/quick-start
     - theme: alt
       text: GitHub
-      link: https://github.com/NanmiCoder/cc-haha
+      link: https://github.com/funnybomb/cchahatui
 
 features:
   - icon: "\U0001F5A5"

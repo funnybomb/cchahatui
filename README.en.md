@@ -1,38 +1,66 @@
-# Claude Code Haha
+# cchahatui
 
 <p align="center">
-  <img src="docs/images/logo-horizontal.png" alt="Claude Code Haha" width="480">
+  <img src="docs/images/app-icon.png" alt="cchahatui" width="220">
 </p>
 
 <div align="center">
 
-[![GitHub Stars](https://img.shields.io/github/stars/NanmiCoder/cc-haha?style=social)](https://github.com/NanmiCoder/cc-haha/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/NanmiCoder/cc-haha?style=social)](https://github.com/NanmiCoder/cc-haha/network/members)
-[![GitHub Issues](https://img.shields.io/github/issues/NanmiCoder/cc-haha)](https://github.com/NanmiCoder/cc-haha/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/NanmiCoder/cc-haha)](https://github.com/NanmiCoder/cc-haha/pulls)
-[![License](https://img.shields.io/github/license/NanmiCoder/cc-haha)](https://github.com/NanmiCoder/cc-haha/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/funnybomb/cchahatui?label=release)](https://github.com/funnybomb/cchahatui/releases)
+[![Version](https://img.shields.io/badge/version-v0.2-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.2)
+[![Desktop](https://img.shields.io/badge/desktop-macOS%20%7C%20Windows-2ea44f)](#install-the-desktop-app)
+[![DeepSeek](https://img.shields.io/badge/default-DeepSeek%20V4-1f6feb)](#deepseek-first)
+[![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db)](desktop/)
+[![License](https://img.shields.io/github/license/funnybomb/cchahatui)](LICENSE)
 [![中文](https://img.shields.io/badge/🇨🇳_中文-Available-green)](README.md)
 [![English](https://img.shields.io/badge/🇺🇸_English-当前-blue)](README.en.md)
-[![Docs](https://img.shields.io/badge/📖_Documentation-Visit-D97757)](https://claudecode-haha.relakkesyang.org)
 
 </div>
 
-A Claude Code build repaired from the source leaked from Anthropic's npm registry on 2026-03-31. Claude Code Haha is now primarily a **desktop Claude Code workspace** for macOS and Windows: sessions, projects, branch / Worktree launch, right-side file changes, code diffs, permission review, provider setup, Computer Use, H5 remote access, IM integration, and scheduled tasks in one app.
+cchahatui is a **DeepSeek-first desktop AI coding workspace**. It is developed from the public projects [cc-haha](https://github.com/NanmiCoder/cc-haha) and [DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI), keeping the cc-haha-style session, project, permission, Agent, Skills, plugin, MCP, Computer Use, IM, scheduled task, and token usage workflow while moving the default model experience to DeepSeek V4: long context, streaming reasoning, prefix-cache-aware usage, and an OpenAI-compatible API path.
 
 <p align="center">
-  <a href="#desktop-preview">Desktop Preview</a> · <a href="#install-the-desktop-app">Install</a> · <a href="#desktop-highlights">Highlights</a> · <a href="#sponsorship--partnership">Sponsorship</a> · <a href="#more-documentation">More Docs</a>
+  <a href="#deepseek-first">DeepSeek-first</a> ·
+  <a href="#project-origin">Project Origin</a> ·
+  <a href="#desktop-preview">Desktop Preview</a> ·
+  <a href="#install-the-desktop-app">Install</a> ·
+  <a href="#more-documentation">More Docs</a>
 </p>
+
+---
+
+## DeepSeek-first
+
+| Capability | cchahatui approach |
+|------|------|
+| Default model | DeepSeek V4 by default, prioritizing `deepseek-v4-pro` / `deepseek-v4-flash` |
+| 1M-token context | Built for long-context DeepSeek V4 workflows across large repositories and multi-turn work |
+| Streaming reasoning | Displays reasoning/thinking content as it streams into the session UI |
+| Prefix-cache awareness | Optimized around DeepSeek prefix caching to reduce repeated context cost and latency |
+| OpenAI-compatible | Uses `/chat/completions` compatible paths for direct DeepSeek key setup |
+| Claude Code-compatible workflow | Keeps cc-haha / Claude Code-style workflows while shifting branding, configuration, and defaults to cchahatui + DeepSeek |
+
+---
+
+## Project Origin
+
+cchahatui integrates and adapts two public projects:
+
+- [cc-haha](https://github.com/NanmiCoder/cc-haha): desktop workspace, session/project workflow, Agents, Skills, MCP, Computer Use, remote access, IM integration, and scheduled task references.
+- [DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI): DeepSeek-first terminal coding agent direction, default model assumptions, and DeepSeek workflow references.
+
+This repository packages those ideas into the independent `cchahatui` desktop product. App name, icon, config directory, default provider, installation docs, and release flow are managed for cchahatui. See [NOTICE.md](NOTICE.md) for upstream acknowledgements.
 
 ---
 
 ## Desktop Preview
 
-The Claude Code Haha desktop app brings sessions, multi-project navigation, branch / Worktree controls, right-side file changes, code diffs, permission review, provider setup, and remote access into one graphical workspace for daily development flows beyond the terminal.
+cchahatui brings sessions, multi-project navigation, branch / Worktree controls, right-side file changes, code diffs, permission review, DeepSeek provider setup, and remote access into one graphical workspace for daily development flows beyond the terminal.
 
 <p align="center">
-  <a href="https://github.com/NanmiCoder/cc-haha/releases"><img src="https://img.shields.io/badge/⬇_Download_Desktop-macOS_%7C_Windows-D97757?style=for-the-badge" alt="Download Desktop"></a>
+  <a href="https://github.com/funnybomb/cchahatui/releases"><img src="https://img.shields.io/badge/Download_Desktop-macOS_%7C_Windows-D97757?style=for-the-badge" alt="Download Desktop"></a>
   &nbsp;
-  <a href="docs/desktop/04-installation.md"><img src="https://img.shields.io/badge/📖_Install_Guide-Guide-gray?style=for-the-badge" alt="Install Guide"></a>
+  <a href="docs/desktop/04-installation.md"><img src="https://img.shields.io/badge/Install_Guide-Guide-gray?style=for-the-badge" alt="Install Guide"></a>
 </p>
 
 <table>
@@ -54,8 +82,8 @@ The Claude Code Haha desktop app brings sessions, multi-project navigation, bran
 
 ## Install the Desktop App
 
-1. Download the macOS or Windows desktop installer from [Releases](https://github.com/NanmiCoder/cc-haha/releases).
-2. On first launch, configure your model provider, API key, and default model in Settings.
+1. Download the macOS or Windows desktop installer from [Releases](https://github.com/funnybomb/cchahatui/releases).
+2. On first launch, configure your DeepSeek provider, API key, and default model in Settings.
 3. If macOS blocks the app on first open, follow the [desktop installation guide](docs/desktop/04-installation.md) for Gatekeeper steps.
 
 ## Run the CLI from Source
@@ -79,7 +107,7 @@ See [environment variables](docs/en/guide/env-vars.md) and [global usage](docs/e
 - **Right-side file changes**: review changed files, added/removed lines, and current workspace state while chatting.
 - **Visual code changes**: inspect edits, file writes, and diffs directly in the desktop app.
 - **Permission review**: approve risky commands, tool calls, and model follow-up questions in the GUI.
-- **Multi-provider setup**: configure Anthropic-compatible APIs, third-party models, WebSearch fallback, and local options.
+- **DeepSeek-first provider setup**: configure DeepSeek, OpenAI-compatible APIs, WebSearch fallback, and local options.
 - **Computer Use**: let the agent take screenshots, click, type, and control desktop apps after authorization.
 - **H5 remote access**: open the current desktop session from a phone or another device with a one-time token.
 - **IM integration**: chat, switch projects, and approve actions through Telegram / Feishu / WeChat / DingTalk.
@@ -92,7 +120,7 @@ See [environment variables](docs/en/guide/env-vars.md) and [global usage](docs/e
 | Document | Description |
 |------|------|
 | [Environment Variables](docs/en/guide/env-vars.md) | Full env var reference and configuration methods |
-| [Third-Party Models](docs/en/guide/third-party-models.md) | Using OpenAI / DeepSeek / Ollama and other non-Anthropic models |
+| [Third-Party Models](docs/en/guide/third-party-models.md) | Using DeepSeek / OpenAI / Ollama and other model providers |
 | [Contributing](docs/en/guide/contributing.md) | Local tests, live model baselines, PR gates, and release gates |
 | [Memory System](docs/memory/01-usage-guide.md) | Cross-session persistent memory usage and implementation |
 | [Multi-Agent System](docs/agent/01-usage-guide.md) | Agent orchestration, parallel tasks and Teams collaboration |
@@ -102,7 +130,7 @@ See [environment variables](docs/en/guide/env-vars.md) and [global usage](docs/e
 | [Desktop App](docs/desktop/) | Tauri 2 + React GUI client — [Quick Start](docs/desktop/01-quick-start.md) \| [Architecture](docs/desktop/02-architecture.md) \| [Installation](docs/desktop/04-installation.md) |
 | [Global Usage](docs/en/guide/global-usage.md) | Run claude-haha from any directory |
 | [FAQ](docs/en/guide/faq.md) | Common error troubleshooting |
-| [Source Fixes](docs/en/reference/fixes.md) | Fixes compared with the original leaked source |
+| [Implementation Notes](docs/en/reference/fixes.md) | Compatibility fixes and integration notes inherited from upstream public projects |
 | [Project Structure](docs/en/reference/project-structure.md) | Code directory structure |
 
 ---
@@ -182,13 +210,15 @@ If this project helps you, consider buying me a coffee — every bit of support 
 | Local runtime | [Bun](https://bun.sh) |
 | Terminal UI | React + [Ink](https://github.com/vadimdemedes/ink) |
 | CLI parsing | Commander.js |
-| API | Anthropic SDK |
+| Provider API | DeepSeek / OpenAI-compatible Chat Completions |
 | Protocols | MCP, LSP |
 
 ## Thanks
 
 Thanks to the following open-source projects and community practices for reference and inspiration:
 
+- [cc-haha](https://github.com/NanmiCoder/cc-haha): desktop AI coding workspace, Agents, Skills, MCP, and local workflow references.
+- [DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI): DeepSeek-first terminal coding agent workflow and provider defaults.
 - [React](https://github.com/facebook/react): frontend engineering and component-based UI ecosystem.
 - [Tauri](https://github.com/tauri-apps/tauri): cross-platform desktop app capabilities and engineering practices.
 - [cc-switch](https://github.com/farion1231/cc-switch): reference for model provider configuration.
@@ -197,18 +227,18 @@ Thanks to the following open-source projects and community practices for referen
 
 ## ⭐ Star History
 
-If this project helps you, please support it with a ⭐ Star so more people can discover Claude Code Haha.
+If this project helps you, please support it with a Star so more people can discover cchahatui.
 
-<a href="https://www.star-history.com/#NanmiCoder/cc-haha&Date">
+<a href="https://www.star-history.com/#funnybomb/cchahatui&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=NanmiCoder/cc-haha&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=NanmiCoder/cc-haha&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=NanmiCoder/cc-haha&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=funnybomb/cchahatui&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=funnybomb/cchahatui&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=funnybomb/cchahatui&type=Date" />
   </picture>
 </a>
 
 ---
 
-## Disclaimer
+## License
 
-This repository is based on the Claude Code source leaked from the Anthropic npm registry on 2026-03-31. All original source code copyrights belong to [Anthropic](https://www.anthropic.com). It is provided for learning and research purposes only.
+See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).

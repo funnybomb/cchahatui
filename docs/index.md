@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: Claude Code Haha
-  text: 本地可运行的 Claude Code
-  tagline: 基于泄露源码修复，支持接入任意 Anthropic 兼容 API（MiniMax、OpenRouter 等）
+  name: cchahatui
+  text: DeepSeek-first 桌面 AI 编程工作台
+  tagline: 基于公开项目 cc-haha 与 DeepSeek-TUI 二次开发，支持 DeepSeek / OpenAI 兼容模型工作流
   image:
-    src: /images/logo-horizontal.png
-    alt: Claude Code Haha
+    src: /images/app-icon.png
+    alt: cchahatui
   actions:
     - theme: brand
       text: 快速开始
       link: /guide/quick-start
     - theme: alt
       text: GitHub
-      link: https://github.com/NanmiCoder/cc-haha
+      link: https://github.com/funnybomb/cchahatui
 
 features:
   - icon: "\U0001F5A5"

@@ -1,7 +1,7 @@
 # Computer Use Guide
 
 
-> **Modified Version**: This feature is a **heavily modified version** of the Computer Use (internal codename "Chicago") found in the leaked Claude Code source. The official implementation relies on Anthropic's private native modules (`@ant/computer-use-swift`, `@ant/computer-use-input`) that are not publicly available. We **replaced the entire underlying operation layer** with a Python bridge: macOS uses `pyautogui` + `mss` + `pyobjc`, and Windows uses `pyautogui` + `mss` + `win32gui` + `psutil`.
+> **Modified Version**: This feature is a **heavily modified version** of the Computer Use workflow from the public cc-haha project, adapted for cchahatui's DeepSeek-first desktop experience. The original implementation depends on private native modules (`@ant/computer-use-swift`, `@ant/computer-use-input`) that are not publicly available, so this project **replaced the entire underlying operation layer** with a Python bridge: macOS uses `pyautogui` + `mss` + `pyobjc`, and Windows uses `pyautogui` + `mss` + `win32gui` + `psutil`.
 
 ---
 
@@ -250,7 +250,7 @@ Replaced all native module calls with Python subprocess calls via `callPythonHel
 | [wimi321/macos-computer-use-skill](https://github.com/wimi321/macos-computer-use-skill) | MIT | Python bridge architecture, `mac_helper.py` runtime, executor adaptation |
 | [domdomegg/computer-use-mcp](https://github.com/domdomegg/computer-use-mcp) | MIT | Independent Computer Use MCP server (nut.js based), used as reference |
 | [paoloanzn/free-code](https://github.com/paoloanzn/free-code) | - | Feature flag system analysis |
-| [oboard/claude-code-rev](https://github.com/oboard/claude-code-rev) | - | Early leaked source restoration, stub package reference |
+| [oboard/claude-code-rev](https://github.com/oboard/claude-code-rev) | - | Early compatibility reference, stub package reference |
 
 ### Underlying Libraries
 

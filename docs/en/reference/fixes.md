@@ -1,7 +1,7 @@
-# Fixes Compared with the Original Leaked Source
+# Public Upstream Integration Notes
 
 
-The leaked source could not run directly. This repository mainly fixes the following issues:
+cchahatui is developed from the public cc-haha and DeepSeek-TUI projects. To integrate the desktop workspace, Agents/Skills/MCP, Computer Use, remote access, and DeepSeek-first model experience into an independent product, this repository keeps and adapts the following compatibility fixes:
 
 | Issue | Root cause | Fix |
 |------|------|------|

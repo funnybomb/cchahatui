@@ -15,10 +15,11 @@
 
 </div>
 
-cchahatui 是一个 **DeepSeek-first 桌面 AI 编程工作台**。它保留 cc-haha 风格的会话、项目、权限、Agent、Skills、插件、MCP、Computer Use、IM 接入、定时任务和 Token 统计能力，同时把默认模型体验切到 DeepSeek V4：大上下文、流式思考、前缀缓存感知、OpenAI-compatible API。
+cchahatui 是一个 **DeepSeek-first 桌面 AI 编程工作台**。它基于公开项目 [cc-haha](https://github.com/NanmiCoder/cc-haha) 与 [DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI) 二次开发，保留 cc-haha 风格的会话、项目、权限、Agent、Skills、插件、MCP、Computer Use、IM 接入、定时任务和 Token 统计能力，同时把默认模型体验切到 DeepSeek V4：大上下文、流式思考、前缀缓存感知、OpenAI-compatible API。
 
 <p align="center">
   <a href="#deepseek-first">DeepSeek-first</a> ·
+  <a href="#项目来源">项目来源</a> ·
   <a href="#项目优势">项目优势</a> ·
   <a href="#桌面端预览">桌面端预览</a> ·
   <a href="#安装">安装</a> ·
@@ -37,6 +38,17 @@ cchahatui 是一个 **DeepSeek-first 桌面 AI 编程工作台**。它保留 cc-
 | 前缀缓存感知 | 以 DeepSeek 前缀缓存为核心优化方向，减少重复上下文成本与等待 |
 | OpenAI-compatible | 使用 `/chat/completions` 兼容路径，方便接入官方 DeepSeek Key |
 | Claude Code 兼容体验 | 保留 cc-haha/Claude Code 类工作流，但品牌、配置、默认提供商转向 cchahatui + DeepSeek |
+
+---
+
+## 项目来源
+
+cchahatui 基于两个公开项目进行整合与改造：
+
+- [cc-haha](https://github.com/NanmiCoder/cc-haha)：提供桌面工作台、会话/项目工作流、Agent、Skills、MCP、Computer Use、远程访问、IM 接入和定时任务等基础能力参考。
+- [DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI)：提供 DeepSeek-first 终端编码 Agent 的产品方向、默认模型体验和 DeepSeek 工作流参考。
+
+本仓库的目标是把上述能力合并成独立的 `cchahatui` 桌面产品：应用名、图标、配置目录、默认提供商、安装说明和发布流程均以 cchahatui 为准。更多上游致谢见 [NOTICE.md](NOTICE.md)。
 
 ---
 
