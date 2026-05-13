@@ -73,14 +73,34 @@ export function resolveAgentOverrides(
 
 /**
  * Resolve the display model string for an agent.
- * Returns the model alias or 'inherit' for display purposes.
+ * Shows provider-facing labels while preserving the underlying aliases used by
+ * the runtime to resolve to the active provider's DeepSeek model slots.
  */
 export function resolveAgentModelDisplay(
   agent: AgentDefinition,
 ): string | undefined {
   const model = agent.model || getDefaultSubagentModel()
   if (!model) return undefined
-  return model === 'inherit' ? 'inherit' : model
+  return getAgentDisplayModelLabel(model)
+}
+
+export function getAgentDisplayModelLabel(model: string): string {
+  switch (model) {
+    case 'inherit':
+      return 'DeepSeek inherit'
+    case 'haiku':
+      return 'DeepSeek V4 Flash'
+    case 'sonnet':
+    case 'opus':
+    case 'best':
+    case 'opusplan':
+      return 'DeepSeek V4 Pro'
+    case 'sonnet[1m]':
+    case 'opus[1m]':
+      return 'DeepSeek V4 Pro 1M'
+    default:
+      return model
+  }
 }
 
 /**

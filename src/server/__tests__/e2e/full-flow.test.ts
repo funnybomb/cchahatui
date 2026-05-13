@@ -250,13 +250,25 @@ describe('E2E: Full Flow', () => {
     expect(Array.isArray(data.allAgents)).toBe(true)
     expect(data.activeAgents.length).toBeGreaterThan(0)
     expect(data.activeAgents.some((agent: any) => agent.source === 'built-in')).toBe(true)
+    const builtInAgents = data.activeAgents.filter((agent: any) => agent.source === 'built-in')
+    const statusline = builtInAgents.find((agent: any) => agent.agentType === 'statusline-setup')
+    const guide = builtInAgents.find((agent: any) => agent.agentType === 'cc-tui-guide')
+    const explore = builtInAgents.find((agent: any) => agent.agentType === 'Explore')
+    expect(statusline?.description).toContain('cc-tui')
+    expect(statusline?.modelDisplay).toBe('DeepSeek V4 Pro')
+    expect(guide?.description).toContain('DeepSeek/OpenAI-compatible API')
+    expect(guide?.modelDisplay).toBe('DeepSeek V4 Flash')
+    expect(explore?.modelDisplay).toBe('DeepSeek V4 Flash')
+    expect(JSON.stringify(builtInAgents)).not.toContain('Claude Code')
+    expect(JSON.stringify(builtInAgents)).not.toContain('Anthropic')
+    expect(JSON.stringify(builtInAgents)).not.toContain('claude-code-guide')
   })
 
   it('should create an agent', async () => {
     const { status } = await api('POST', '/api/agents', {
       name: 'test-agent',
       description: 'A test agent',
-      model: 'claude-sonnet-4-6',
+      model: 'deepseek-v4-pro',
     })
     expect(status).toBe(201)
   })

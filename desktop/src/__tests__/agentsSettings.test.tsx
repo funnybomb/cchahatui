@@ -49,8 +49,8 @@ const MOCK_AGENTS = [
   {
     agentType: 'code-reviewer',
     description: 'Reviews code for quality and security',
-    model: 'claude-sonnet-4-6',
-    modelDisplay: 'claude-sonnet-4-6',
+    model: 'deepseek-v4-pro',
+    modelDisplay: 'DeepSeek V4 Pro',
     tools: ['Read', 'Grep', 'Glob'],
     systemPrompt: '# Code Reviewer\n\nYou are an expert code reviewer.',
     color: 'blue',
@@ -61,8 +61,8 @@ const MOCK_AGENTS = [
   {
     agentType: 'doc-writer',
     description: 'Writes technical documentation',
-    model: 'claude-haiku-4-5',
-    modelDisplay: 'claude-haiku-4-5',
+    model: 'deepseek-v4-flash',
+    modelDisplay: 'DeepSeek V4 Flash',
     tools: ['Read'],
     systemPrompt: 'You write clear and concise docs.',
     color: 'green',
@@ -275,7 +275,7 @@ describe('Settings > Agents tab', () => {
 
     expect(screen.getByText('Back to list')).toBeInTheDocument()
     expect(screen.getByText('Agent Profile')).toBeInTheDocument()
-    expect(screen.getAllByText('claude-sonnet-4-6')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('DeepSeek V4 Pro')[0]).toBeInTheDocument()
     expect(screen.getByText('Read')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Code Reviewer' })).toBeInTheDocument()
 

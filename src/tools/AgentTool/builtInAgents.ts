@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import { isEnvTruthy } from '../../utils/envUtils.js'
-import { CLAUDE_CODE_GUIDE_AGENT } from './built-in/claudeCodeGuideAgent.js'
+import { CC_TUI_GUIDE_AGENT } from './built-in/ccTuiGuideAgent.js'
 import { EXPLORE_AGENT } from './built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js'
 import { PLAN_AGENT } from './built-in/planAgent.js'
@@ -64,14 +64,14 @@ export function getBuiltInAgents(): AgentDefinition[] {
     agents.push(EXPLORE_AGENT, PLAN_AGENT)
   }
 
-  // Include Code Guide agent for non-SDK entrypoints
+  // Include cc-tui guide agent for non-SDK entrypoints
   const isNonSdkEntrypoint =
     process.env.CLAUDE_CODE_ENTRYPOINT !== 'sdk-ts' &&
     process.env.CLAUDE_CODE_ENTRYPOINT !== 'sdk-py' &&
     process.env.CLAUDE_CODE_ENTRYPOINT !== 'sdk-cli'
 
   if (isNonSdkEntrypoint) {
-    agents.push(CLAUDE_CODE_GUIDE_AGENT)
+    agents.push(CC_TUI_GUIDE_AGENT)
   }
 
   if (isVerificationAgentEnabled()) {

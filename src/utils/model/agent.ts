@@ -79,7 +79,7 @@ export function getAgentModel(
 
   if (agentModelWithExp === 'inherit') {
     // Apply runtime model resolution for inherit to get the effective model
-    // This ensures agents using 'inherit' get opusplan→Opus resolution in plan mode
+    // This ensures agents using 'inherit' keep the runtime plan-mode model.
     return getRuntimeMainLoopModel({
       permissionMode: permissionMode ?? 'default',
       mainLoopModel: parentModel,
@@ -99,9 +99,9 @@ export function getAgentModel(
  * tier. When it does, the subagent inherits the parent's exact model string
  * instead of resolving the alias to a provider default.
  *
- * Prevents surprising downgrades: a Vertex user on Opus 4.7 (via /model) who
- * spawns a subagent with `model: opus` should get Opus 4.7, not whatever
- * getDefaultOpusModel() returns for 3P.
+ * Prevents surprising downgrades: a user on a power-tier model (via /model)
+ * who spawns a subagent with the matching family alias should get the exact
+ * parent model, not whatever getDefaultOpusModel() returns for 3P.
  * See https://github.com/anthropics/claude-code/issues/30815.
  *
  * Only bare family aliases match. `opus[1m]`, `best`, `opusplan` fall through
@@ -123,8 +123,20 @@ function aliasMatchesParentTier(alias: string, parentModel: string): boolean {
 
 export function getAgentModelDisplay(model: string | undefined): string {
   // When model is omitted, getDefaultSubagentModel() returns 'inherit' at runtime
-  if (!model) return 'Inherit from parent (default)'
-  if (model === 'inherit') return 'Inherit from parent'
+  if (!model) return 'Inherit current DeepSeek model (default)'
+  if (model === 'inherit') return 'Inherit current DeepSeek model'
+  if (model === 'haiku') return 'DeepSeek V4 Flash'
+  if (
+    model === 'sonnet' ||
+    model === 'opus' ||
+    model === 'best' ||
+    model === 'opusplan'
+  ) {
+    return 'DeepSeek V4 Pro'
+  }
+  if (model === 'sonnet[1m]' || model === 'opus[1m]') {
+    return 'DeepSeek V4 Pro 1M'
+  }
   return capitalize(model)
 }
 
@@ -135,22 +147,22 @@ export function getAgentModelOptions(): AgentModelOption[] {
   return [
     {
       value: 'sonnet',
-      label: 'Sonnet',
-      description: 'Balanced performance - best for most agents',
+      label: 'DeepSeek V4 Pro',
+      description: 'Balanced high-capability slot for most agents',
     },
     {
       value: 'opus',
-      label: 'Opus',
-      description: 'Most capable for complex reasoning tasks',
+      label: 'DeepSeek V4 Pro',
+      description: 'Power slot for complex reasoning tasks',
     },
     {
       value: 'haiku',
-      label: 'Haiku',
-      description: 'Fast and efficient for simple tasks',
+      label: 'DeepSeek V4 Flash',
+      description: 'Fast slot for lightweight agent work',
     },
     {
       value: 'inherit',
-      label: 'Inherit from parent',
+      label: 'Inherit current DeepSeek model',
       description: 'Use the same model as the main conversation',
     },
   ]
