@@ -3,7 +3,7 @@
  *
  * 为什么存在: macOS Keychain ACL 在 .app 被打上 quarantine 属性后
  * 对无 UI sidecar 静默拒绝,导致 CLI 读不到 OAuth token → 403。
- * 这个 service 把 token 存到 haha 自己的目录,并通过 env 注入给 CLI。
+ * 这个 service 把 token 存到 cchahatui 自己的目录,并通过 env 注入给 CLI。
  *
  * 复用 src/services/oauth/{crypto,client}.ts 里的 PKCE + token exchange 逻辑,
  * 不复制粘贴 —— 保证跟 CLI 走同一套协议实现。
@@ -30,6 +30,10 @@ import type {
   SubscriptionType,
 } from '../../services/oauth/types.js'
 import { getOauthConfig } from '../../constants/oauth.js'
+import {
+  ensureCchahatuiManagedConfigDirMigrated,
+  getCchahatuiManagedConfigPathForDir,
+} from '../../utils/cchahatuiConfig.js'
 
 export type StoredOAuthTokens = {
   accessToken: string
@@ -71,11 +75,12 @@ export class HahaOAuthService {
   private getOAuthFilePath(): string {
     const configDir =
       process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
-    return path.join(configDir, 'cc-haha', 'oauth.json')
+    return getCchahatuiManagedConfigPathForDir(configDir, 'oauth.json')
   }
 
   async loadTokens(): Promise<StoredOAuthTokens | null> {
     try {
+      await ensureCchahatuiManagedConfigDirMigrated().catch(() => {})
       const raw = await fs.readFile(this.getOAuthFilePath(), 'utf-8')
       return JSON.parse(raw) as StoredOAuthTokens
     } catch (err) {
@@ -85,6 +90,7 @@ export class HahaOAuthService {
   }
 
   async saveTokens(tokens: StoredOAuthTokens): Promise<void> {
+    await ensureCchahatuiManagedConfigDirMigrated().catch(() => {})
     const filePath = this.getOAuthFilePath()
     await fs.mkdir(path.dirname(filePath), { recursive: true })
     // 写临时文件再 rename,防止写到一半被其他读者读到残缺 JSON。
@@ -96,6 +102,7 @@ export class HahaOAuthService {
 
   async deleteTokens(): Promise<void> {
     try {
+      await ensureCchahatuiManagedConfigDirMigrated().catch(() => {})
       await fs.unlink(this.getOAuthFilePath())
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err

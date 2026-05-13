@@ -21,6 +21,7 @@ import {
   buildClaudeCliArgs,
   resolveClaudeCliLauncher,
 } from '../../utils/desktopBundledCli.js'
+import { getManagedConfigCandidateDirs } from '../../utils/cchahatuiConfig.js'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -688,24 +689,28 @@ export class CronScheduler {
       return true
     }
 
-    const ccHahaDir = path.join(this.getConfigDir(), 'cc-haha')
-    if (existsSync(path.join(ccHahaDir, 'providers.json'))) {
-      return true
-    }
+    for (const managedDir of getManagedConfigCandidateDirs(this.getConfigDir())) {
+      if (existsSync(path.join(managedDir, 'providers.json'))) {
+        return true
+      }
 
-    try {
-      const raw = readFileSync(path.join(ccHahaDir, 'settings.json'), 'utf-8')
-      const parsed = JSON.parse(raw) as { env?: Record<string, string> }
-      const env = parsed.env ?? {}
-      return Object.entries(env).some(
-        ([key, value]) =>
-          isProviderManagedEnvVar(key) &&
-          typeof value === 'string' &&
-          value.trim().length > 0,
-      )
-    } catch {
-      return false
+      try {
+        const raw = readFileSync(path.join(managedDir, 'settings.json'), 'utf-8')
+        const parsed = JSON.parse(raw) as { env?: Record<string, string> }
+        const env = parsed.env ?? {}
+        if (Object.entries(env).some(
+          ([key, value]) =>
+            isProviderManagedEnvVar(key) &&
+            typeof value === 'string' &&
+            value.trim().length > 0,
+        )) {
+          return true
+        }
+      } catch {
+        // Try the next compatibility directory.
+      }
     }
+    return false
   }
 
   private shouldMarkManagedOAuth(providerId?: string | null): boolean {
@@ -716,25 +721,26 @@ export class CronScheduler {
       return false
     }
 
-    try {
-      const raw = readFileSync(
-        path.join(this.getConfigDir(), 'cc-haha', 'settings.json'),
-        'utf-8',
-      )
-      const parsed = JSON.parse(raw) as { env?: Record<string, string> }
-      const env = parsed.env ?? {}
-      const hasProviderEnv = [
-        'ANTHROPIC_API_KEY',
-        'ANTHROPIC_AUTH_TOKEN',
-        'ANTHROPIC_BASE_URL',
-      ].some(
-        (key) =>
-          typeof env[key] === 'string' && env[key]!.trim().length > 0,
-      )
-      return !hasProviderEnv
-    } catch {
-      return true
+    for (const managedDir of getManagedConfigCandidateDirs(this.getConfigDir())) {
+      try {
+        const raw = readFileSync(path.join(managedDir, 'settings.json'), 'utf-8')
+        const parsed = JSON.parse(raw) as { env?: Record<string, string> }
+        const env = parsed.env ?? {}
+        const hasProviderEnv = [
+          'ANTHROPIC_API_KEY',
+          'ANTHROPIC_AUTH_TOKEN',
+          'ANTHROPIC_BASE_URL',
+        ].some(
+          (key) =>
+            typeof env[key] === 'string' && env[key]!.trim().length > 0,
+        )
+        return !hasProviderEnv
+      } catch {
+        // Try the next compatibility directory.
+      }
     }
+    // Keep the original default: missing settings behaves like official mode.
+    return true
   }
 
   private async buildOfficialOAuthEnv(): Promise<Record<string, string>> {

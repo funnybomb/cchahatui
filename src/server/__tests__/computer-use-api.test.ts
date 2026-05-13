@@ -60,7 +60,7 @@ describe('Computer Use API authorized app config', () => {
     expect(await getRes.json()).toMatchObject({ enabled: false })
 
     const raw = await readFile(
-      join(configDir!, 'cc-haha', 'computer-use-config.json'),
+      join(configDir!, 'cchahatui', 'computer-use-config.json'),
       'utf8',
     )
     expect(JSON.parse(raw)).toMatchObject({ enabled: false })

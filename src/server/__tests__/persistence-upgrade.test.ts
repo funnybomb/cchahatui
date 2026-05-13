@@ -33,10 +33,11 @@ describe('persistent storage upgrade migrations', () => {
   })
 
   test('migrates legacy providers index and writes a backup before changing it', async () => {
-    const ccHahaDir = path.join(tempDir, 'cc-haha')
-    await fs.mkdir(ccHahaDir, { recursive: true })
+    const legacyDir = path.join(tempDir, 'cc-haha')
+    const managedDir = path.join(tempDir, 'cchahatui')
+    await fs.mkdir(legacyDir, { recursive: true })
     await fs.writeFile(
-      path.join(ccHahaDir, 'providers.json'),
+      path.join(legacyDir, 'providers.json'),
       JSON.stringify({
         activeProviderId: 'provider-1',
         rootFutureField: { keep: true },
@@ -56,9 +57,10 @@ describe('persistent storage upgrade migrations', () => {
     const report = await ensurePersistentStorageUpgraded()
 
     expect(report.failures).toEqual([])
-    expect(report.migratedEntries).toContain('cc-haha/providers.json')
+    expect(report.migratedEntries).toContain('cc-haha directory -> cchahatui directory')
+    expect(report.migratedEntries).toContain('cchahatui/providers.json')
 
-    const migrated = JSON.parse(await fs.readFile(path.join(ccHahaDir, 'providers.json'), 'utf-8')) as {
+    const migrated = JSON.parse(await fs.readFile(path.join(managedDir, 'providers.json'), 'utf-8')) as {
       schemaVersion?: number
       activeId?: string | null
       activeProviderId?: string
@@ -71,7 +73,7 @@ describe('persistent storage upgrade migrations', () => {
     expect(migrated.rootFutureField).toEqual({ keep: true })
     expect(migrated.providers?.[0]?.extraFutureField).toBe('keep-me')
 
-    const backups = (await listFiles(ccHahaDir)).filter((file) => file.startsWith('providers.json.bak-before-migration-'))
+    const backups = (await listFiles(managedDir)).filter((file) => file.startsWith('providers.json.bak-before-migration-'))
     expect(backups.length).toBe(1)
 
     const service = new ProviderService()
@@ -80,7 +82,7 @@ describe('persistent storage upgrade migrations', () => {
     expect(activeId).toBe('provider-1')
 
     await service.updateProvider('provider-1', { name: 'Renamed Provider' })
-    const rewritten = JSON.parse(await fs.readFile(path.join(ccHahaDir, 'providers.json'), 'utf-8')) as {
+    const rewritten = JSON.parse(await fs.readFile(path.join(managedDir, 'providers.json'), 'utf-8')) as {
       rootFutureField?: unknown
       providers?: Array<Record<string, unknown>>
     }
@@ -107,16 +109,18 @@ describe('persistent storage upgrade migrations', () => {
   })
 
   test('quarantines malformed managed settings instead of blocking startup', async () => {
-    const ccHahaDir = path.join(tempDir, 'cc-haha')
-    await fs.mkdir(ccHahaDir, { recursive: true })
-    await fs.writeFile(path.join(ccHahaDir, 'settings.json'), '{"env":', 'utf-8')
+    const legacyDir = path.join(tempDir, 'cc-haha')
+    const managedDir = path.join(tempDir, 'cchahatui')
+    await fs.mkdir(legacyDir, { recursive: true })
+    await fs.writeFile(path.join(legacyDir, 'settings.json'), '{"env":', 'utf-8')
 
     const report = await ensurePersistentStorageUpgraded()
 
     expect(report.failures).toEqual([])
-    expect(report.migratedEntries).toContain('cc-haha/settings.json')
-    expect(JSON.parse(await fs.readFile(path.join(ccHahaDir, 'settings.json'), 'utf-8'))).toEqual({})
-    const quarantined = (await listFiles(ccHahaDir)).filter((file) => file.startsWith('settings.json.invalid-'))
+    expect(report.migratedEntries).toContain('cc-haha directory -> cchahatui directory')
+    expect(report.migratedEntries).toContain('cchahatui/settings.json')
+    expect(JSON.parse(await fs.readFile(path.join(managedDir, 'settings.json'), 'utf-8'))).toEqual({})
+    const quarantined = (await listFiles(managedDir)).filter((file) => file.startsWith('settings.json.invalid-'))
     expect(quarantined.length).toBe(1)
   })
 })

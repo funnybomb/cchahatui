@@ -3,6 +3,10 @@ import * as os from 'os'
 import * as path from 'path'
 import { ApiError } from '../middleware/errorHandler.js'
 import { readRecoverableJsonFile } from './recoverableJsonFile.js'
+import {
+  ensureCchahatuiManagedConfigDirMigrated,
+  getCchahatuiManagedConfigDir,
+} from '../../utils/cchahatuiConfig.js'
 import { sanitizePath } from '../../utils/sessionStoragePortable.js'
 
 const CURRENT_PROJECT_INDEX_SCHEMA_VERSION = 1
@@ -162,15 +166,16 @@ export class ProjectService {
     return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
   }
 
-  private getCcHahaDir(): string {
-    return path.join(this.getConfigDir(), 'cc-haha')
+  private getManagedConfigDir(): string {
+    return getCchahatuiManagedConfigDir(this.getConfigDir())
   }
 
   private getIndexPath(): string {
-    return path.join(this.getCcHahaDir(), 'projects.json')
+    return path.join(this.getManagedConfigDir(), 'projects.json')
   }
 
   private async readIndex(): Promise<ProjectIndex> {
+    await ensureCchahatuiManagedConfigDirMigrated(this.getConfigDir()).catch(() => {})
     return await readRecoverableJsonFile({
       filePath: this.getIndexPath(),
       label: 'projects index',
@@ -180,6 +185,7 @@ export class ProjectService {
   }
 
   private async writeIndex(index: ProjectIndex): Promise<void> {
+    await ensureCchahatuiManagedConfigDirMigrated(this.getConfigDir()).catch(() => {})
     await writeJsonFile(this.getIndexPath(), {
       schemaVersion: CURRENT_PROJECT_INDEX_SCHEMA_VERSION,
       projects: index.projects,

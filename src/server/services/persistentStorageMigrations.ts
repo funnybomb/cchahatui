@@ -2,6 +2,10 @@ import * as fs from 'fs/promises'
 import * as os from 'os'
 import * as path from 'path'
 import { randomBytes } from 'node:crypto'
+import {
+  getCchahatuiManagedConfigDir,
+  getLegacyCcHahaManagedConfigDir,
+} from '../../utils/cchahatuiConfig.js'
 
 export const CURRENT_PROVIDER_INDEX_SCHEMA_VERSION = 1
 
@@ -161,17 +165,30 @@ async function migrateJsonEntry(
 
 async function runPersistentStorageMigrations(configDir: string): Promise<MigrationReport> {
   const report: MigrationReport = { migratedEntries: [], failures: [] }
-  const ccHahaDir = path.join(configDir, 'cc-haha')
+  const managedDir = getCchahatuiManagedConfigDir(configDir)
+  const legacyDir = getLegacyCcHahaManagedConfigDir(configDir)
+
+  try {
+    const managedExists = await fs.stat(managedDir).then(() => true, () => false)
+    const legacyExists = await fs.stat(legacyDir).then(() => true, () => false)
+    if (!managedExists && legacyExists) {
+      await fs.mkdir(path.dirname(managedDir), { recursive: true })
+      await fs.rename(legacyDir, managedDir)
+      report.migratedEntries.push('cc-haha directory -> cchahatui directory')
+    }
+  } catch (error) {
+    report.failures.push(`managed config directory: ${error instanceof Error ? error.message : String(error)}`)
+  }
 
   await migrateJsonEntry(
-    path.join(ccHahaDir, 'providers.json'),
-    'cc-haha/providers.json',
+    path.join(managedDir, 'providers.json'),
+    'cchahatui/providers.json',
     report,
     migrateProvidersIndex,
   )
   await migrateJsonEntry(
-    path.join(ccHahaDir, 'settings.json'),
-    'cc-haha/settings.json',
+    path.join(managedDir, 'settings.json'),
+    'cchahatui/settings.json',
     report,
     migrateManagedSettings,
   )

@@ -261,7 +261,7 @@ async function runDesktopPermissionDialog(
 }
 
 /**
- * Load pre-authorized apps from ~/.claude/cc-haha/computer-use-config.json.
+ * Load pre-authorized apps from the cchahatui managed config directory.
  * Called once when the binding is first created. Pre-authorized apps
  * are injected into appState so `getAllowedApps()` returns them
  * immediately — no runtime permission dialog needed.

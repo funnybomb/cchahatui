@@ -91,11 +91,11 @@ vi.mock('../components/chat/CodeViewer', () => ({
 describe('Settings > Diagnostics tab', () => {
   beforeEach(() => {
     diagnosticsApiMock.getStatus.mockResolvedValue({
-      logDir: '/tmp/claude/cc-haha/diagnostics',
-      diagnosticsPath: '/tmp/claude/cc-haha/diagnostics/diagnostics.jsonl',
-      cliDiagnosticsPath: '/tmp/claude/cc-haha/diagnostics/cli-diagnostics.jsonl',
-      runtimeErrorsPath: '/tmp/claude/cc-haha/diagnostics/runtime-errors.log',
-      exportDir: '/tmp/claude/cc-haha/diagnostics/exports',
+      logDir: '/tmp/claude/cchahatui/diagnostics',
+      diagnosticsPath: '/tmp/claude/cchahatui/diagnostics/diagnostics.jsonl',
+      cliDiagnosticsPath: '/tmp/claude/cchahatui/diagnostics/cli-diagnostics.jsonl',
+      runtimeErrorsPath: '/tmp/claude/cchahatui/diagnostics/runtime-errors.log',
+      exportDir: '/tmp/claude/cchahatui/diagnostics/exports',
       retentionDays: 7,
       maxBytes: 50 * 1024 * 1024,
       totalBytes: 4096,
@@ -119,8 +119,8 @@ describe('Settings > Diagnostics tab', () => {
     })
     diagnosticsApiMock.exportBundle.mockResolvedValue({
       bundle: {
-        path: '/tmp/claude/cc-haha/diagnostics/exports/cc-haha-diagnostics.tar.gz',
-        fileName: 'cc-haha-diagnostics.tar.gz',
+        path: '/tmp/claude/cchahatui/diagnostics/exports/cchahatui-diagnostics.tar.gz',
+        fileName: 'cchahatui-diagnostics.tar.gz',
         bytes: 1024,
       },
     })
@@ -148,7 +148,7 @@ describe('Settings > Diagnostics tab', () => {
     fireEvent.click(screen.getByText('Diagnostics'))
 
     expect(await screen.findByText('Log directory')).toBeInTheDocument()
-    expect(screen.getByText('/tmp/claude/cc-haha/diagnostics')).toBeInTheDocument()
+    expect(screen.getByText('/tmp/claude/cchahatui/diagnostics')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Export Bundle/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Copy Error Summary/i })).toBeInTheDocument()
     expect(screen.getByText('cli_start_failed')).toBeInTheDocument()
@@ -165,7 +165,7 @@ describe('Settings > Diagnostics tab', () => {
     await waitFor(() => {
       expect(diagnosticsApiMock.exportBundle).toHaveBeenCalled()
     })
-    expect(await screen.findByText('/tmp/claude/cc-haha/diagnostics/exports/cc-haha-diagnostics.tar.gz')).toBeInTheDocument()
+    expect(await screen.findByText('/tmp/claude/cchahatui/diagnostics/exports/cchahatui-diagnostics.tar.gz')).toBeInTheDocument()
   })
 
   it('copies the recent error summary with the legacy clipboard fallback', async () => {

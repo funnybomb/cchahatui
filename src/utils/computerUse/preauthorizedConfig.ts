@@ -1,7 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname } from 'node:path'
 import type { CuGrantFlags } from '../../vendor/computer-use-mcp/types.js'
-import { getClaudeConfigHomeDir } from '../envUtils.js'
+import {
+  ensureCchahatuiManagedConfigDirMigrated,
+  getCchahatuiManagedConfigPath,
+} from '../cchahatuiConfig.js'
 
 export type StoredAuthorizedApp = {
   bundleId: string
@@ -25,11 +28,7 @@ export const DEFAULT_DESKTOP_GRANT_FLAGS: CuGrantFlags = {
 }
 
 export function getComputerUseConfigPath(): string {
-  return join(
-    getClaudeConfigHomeDir(),
-    'cc-haha',
-    'computer-use-config.json',
-  )
+  return getCchahatuiManagedConfigPath('computer-use-config.json')
 }
 
 export function resolveStoredComputerUseConfig(
@@ -61,6 +60,7 @@ export async function loadStoredComputerUseConfig(): Promise<
   ReturnType<typeof resolveStoredComputerUseConfig>
 > {
   try {
+    await ensureCchahatuiManagedConfigDirMigrated().catch(() => {})
     const raw = await readFile(getComputerUseConfigPath(), 'utf8')
     return resolveStoredComputerUseConfig(JSON.parse(raw))
   } catch {
@@ -71,6 +71,7 @@ export async function loadStoredComputerUseConfig(): Promise<
 export async function saveStoredComputerUseConfig(
   config: StoredComputerUseConfig,
 ): Promise<void> {
+  await ensureCchahatuiManagedConfigDirMigrated().catch(() => {})
   const configPath = getComputerUseConfigPath()
   await mkdir(dirname(configPath), { recursive: true })
   await writeFile(configPath, JSON.stringify(config, null, 2), 'utf8')

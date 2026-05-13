@@ -22,6 +22,7 @@ import {
   buildClaudeCliArgs,
   resolveClaudeCliLauncher,
 } from '../../utils/desktopBundledCli.js'
+import { getManagedConfigCandidateDirs } from '../../utils/cchahatuiConfig.js'
 
 const MAX_CAPTURED_PROCESS_LINES = 80
 const MAX_CAPTURED_SDK_MESSAGES = 40
@@ -840,7 +841,7 @@ export class ConversationService {
   ): Promise<Record<string, string>> {
     // Provider isolation: when Desktop has its own provider config/index,
     // strip inherited provider env vars so the child CLI reads fresh values
-    // from ~/.claude/cc-haha/settings.json instead of stale process.env.
+    // from cchahatui managed settings.json instead of stale process.env.
     //
     // If the user never configured a Desktop provider and only launched the
     // app/server with ANTHROPIC_* env vars, keep those env vars so Windows
@@ -920,7 +921,7 @@ export class ConversationService {
       ...(explicitProviderEnv
         ? { CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST: '1' }
         : {}),
-      // "官方" 模式 (cc-haha/settings.json 没 provider env) 下,把 CLI 标记为
+      // "官方" 模式 (managed settings.json 没 provider env) 下,把 CLI 标记为
       // managed-OAuth,让它忽略外部 ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN
       // 残留、只走用户 /login 的 OAuth token。自定义 provider 模式绝不能设,
       // 否则 CLI 会忽略 provider 的 AUTH_TOKEN、错误地走 OAuth 打到第三方
@@ -967,36 +968,40 @@ export class ConversationService {
 
     const configDir =
       process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
-    const ccHahaDir = path.join(configDir, 'cc-haha')
-    const providersIndexPath = path.join(ccHahaDir, 'providers.json')
-    const settingsPath = path.join(ccHahaDir, 'settings.json')
+    for (const managedDir of getManagedConfigCandidateDirs(configDir)) {
+      const providersIndexPath = path.join(managedDir, 'providers.json')
+      const settingsPath = path.join(managedDir, 'settings.json')
 
-    if (fs.existsSync(providersIndexPath)) {
-      return true
-    }
+      if (fs.existsSync(providersIndexPath)) {
+        return true
+      }
 
-    try {
-      const raw = fs.readFileSync(settingsPath, 'utf-8')
-      const parsed = JSON.parse(raw) as { env?: Record<string, string> }
-      const env = parsed.env ?? {}
-      return [
-        'ANTHROPIC_API_KEY',
-        'ANTHROPIC_BASE_URL',
-        'ANTHROPIC_AUTH_TOKEN',
-        'ANTHROPIC_MODEL',
-        'ANTHROPIC_DEFAULT_HAIKU_MODEL',
-        'ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES',
-        'ANTHROPIC_DEFAULT_SONNET_MODEL',
-        'ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES',
-        'ANTHROPIC_DEFAULT_OPUS_MODEL',
-        'ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES',
-        'CC_HAHA_SEND_DISABLED_THINKING',
-        'CLAUDE_CODE_AUTO_COMPACT_WINDOW',
-        'CLAUDE_CODE_MODEL_CONTEXT_WINDOWS',
-      ].some((key) => typeof env[key] === 'string' && env[key]!.trim().length > 0)
-    } catch {
-      return false
+      try {
+        const raw = fs.readFileSync(settingsPath, 'utf-8')
+        const parsed = JSON.parse(raw) as { env?: Record<string, string> }
+        const env = parsed.env ?? {}
+        if ([
+          'ANTHROPIC_API_KEY',
+          'ANTHROPIC_BASE_URL',
+          'ANTHROPIC_AUTH_TOKEN',
+          'ANTHROPIC_MODEL',
+          'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+          'ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES',
+          'ANTHROPIC_DEFAULT_SONNET_MODEL',
+          'ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES',
+          'ANTHROPIC_DEFAULT_OPUS_MODEL',
+          'ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES',
+          'CC_HAHA_SEND_DISABLED_THINKING',
+          'CLAUDE_CODE_AUTO_COMPACT_WINDOW',
+          'CLAUDE_CODE_MODEL_CONTEXT_WINDOWS',
+        ].some((key) => typeof env[key] === 'string' && env[key]!.trim().length > 0)) {
+          return true
+        }
+      } catch {
+        // Try the next compatibility directory.
+      }
     }
+    return false
   }
 
   /**
@@ -1005,7 +1010,7 @@ export class ConversationService {
    * 这种情况下 CLI 必须按 token 路径走第三方 endpoint,不能被 managed 规则
    * 强制切 OAuth。
    *
-   * 默认 (读不到 settings.json) 按"官方"处理 — 即使用户从未用过 cc-haha
+   * 默认 (读不到 settings.json) 按"官方"处理 — 即使用户从未用过 cchahatui
    * provider 管理,也希望官方 OAuth 能正常工作。
    */
   private shouldMarkManagedOAuth(providerId?: string | null): boolean {
@@ -1018,23 +1023,26 @@ export class ConversationService {
 
     const configDir =
       process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
-    const settingsPath = path.join(configDir, 'cc-haha', 'settings.json')
-    try {
-      const raw = fs.readFileSync(settingsPath, 'utf-8')
-      const parsed = JSON.parse(raw) as { env?: Record<string, string> }
-      const env = parsed.env ?? {}
-      const hasProviderEnv = [
-        'ANTHROPIC_API_KEY',
-        'ANTHROPIC_AUTH_TOKEN',
-        'ANTHROPIC_BASE_URL',
-      ].some(
-        (key) =>
-          typeof env[key] === 'string' && env[key]!.trim().length > 0,
-      )
-      return !hasProviderEnv
-    } catch {
-      return true
+    for (const managedDir of getManagedConfigCandidateDirs(configDir)) {
+      const settingsPath = path.join(managedDir, 'settings.json')
+      try {
+        const raw = fs.readFileSync(settingsPath, 'utf-8')
+        const parsed = JSON.parse(raw) as { env?: Record<string, string> }
+        const env = parsed.env ?? {}
+        const hasProviderEnv = [
+          'ANTHROPIC_API_KEY',
+          'ANTHROPIC_AUTH_TOKEN',
+          'ANTHROPIC_BASE_URL',
+        ].some(
+          (key) =>
+            typeof env[key] === 'string' && env[key]!.trim().length > 0,
+        )
+        return !hasProviderEnv
+      } catch {
+        // Try the next compatibility directory.
+      }
     }
+    return true
   }
 
   private resolveCliArgs(baseArgs: string[]): string[] {
