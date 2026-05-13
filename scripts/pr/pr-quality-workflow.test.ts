@@ -23,6 +23,16 @@ describe('PR quality workflow', () => {
     expect(workflow).toContain('retention-days: 14')
   })
 
+  test('installs dependencies before running policy tests in CI', () => {
+    const workflow = readFileSync('.github/workflows/pr-quality.yml', 'utf8')
+
+    const installIndex = workflow.indexOf('name: Install root dependencies')
+    const policyIndex = workflow.indexOf('name: Run policy tests')
+
+    expect(installIndex).toBeGreaterThan(-1)
+    expect(policyIndex).toBeGreaterThan(installIndex)
+  })
+
   test('exposes a single required gate job for branch protection', () => {
     const workflow = readFileSync('.github/workflows/pr-quality.yml', 'utf8')
 

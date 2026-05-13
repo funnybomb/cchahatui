@@ -366,6 +366,9 @@ describe('EmptySession', () => {
       expect(screen.getByText('main')).toBeInTheDocument()
     })
 
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Run/i })).not.toBeDisabled()
+    })
     fireEvent.click(screen.getByRole('button', { name: /Run/i }))
 
     await waitFor(() => {
