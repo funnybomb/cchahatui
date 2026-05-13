@@ -18,9 +18,19 @@ describe('PR quality workflow', () => {
 
     expect(workflow).toContain('COVERAGE_BASE_REF: origin/${{ github.base_ref }}')
     expect(workflow).toContain('cat "$latest_report" >> "$GITHUB_STEP_SUMMARY"')
-    expect(workflow).toContain('uses: actions/upload-artifact@v4')
+    expect(workflow).toContain('uses: actions/upload-artifact@v7')
     expect(workflow).toContain('path: artifacts/coverage/')
     expect(workflow).toContain('retention-days: 14')
+  })
+
+  test('installs dependencies before running policy tests in CI', () => {
+    const workflow = readFileSync('.github/workflows/pr-quality.yml', 'utf8')
+
+    const installIndex = workflow.indexOf('name: Install root dependencies')
+    const policyIndex = workflow.indexOf('name: Run policy tests')
+
+    expect(installIndex).toBeGreaterThan(-1)
+    expect(policyIndex).toBeGreaterThan(installIndex)
   })
 
   test('exposes a single required gate job for branch protection', () => {
