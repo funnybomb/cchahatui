@@ -7,7 +7,7 @@
 <div align="center">
 
 [![Release](https://img.shields.io/github/v/release/funnybomb/cchahatui?label=release)](https://github.com/funnybomb/cchahatui/releases)
-[![Version](https://img.shields.io/badge/version-v0.3.0-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.3.0)
+[![Version](https://img.shields.io/badge/version-v0.3.1-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.3.1)
 [![Desktop](https://img.shields.io/badge/desktop-macOS%20%7C%20Windows-2ea44f)](#安装)
 [![DeepSeek](https://img.shields.io/badge/default-DeepSeek%20V4-1f6feb)](#deepseek-first)
 [![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db)](desktop/)
@@ -90,7 +90,7 @@ cchahatui 基于两个公开项目进行整合与改造：
 ### 下载桌面端
 
 1. 打开 [Releases](https://github.com/funnybomb/cchahatui/releases)。
-2. 下载 `v0.3.0` 对应的 macOS / Windows 安装包。
+2. 下载 `v0.3.1` 对应的 macOS / Windows 安装包。
 3. macOS 安装后从 `/Applications/cchahatui.app` 启动。
 4. 首次启动进入设置页，添加 DeepSeek 提供商和 API Key。
 
@@ -134,7 +134,7 @@ bun run verify
 
 | 类型 | 路径 |
 |------|------|
-| 当前本机项目目录 | `/Users/funnybomb/百度云同步盘/mac_syn/FangcloudV2/personal_space.localized/个人工作文件/projects/haha+tui` |
+| 当前本机项目目录 | 以用户在本机选择或启动的项目目录为准，例如 `~/projects/your-project` |
 | 应用数据 | `~/Library/Application Support/cchahatui/` |
 | 诊断日志 | `~/Library/Application Support/cchahatui/claude/cc-haha/diagnostics/` |
 | 项目配置 | 项目目录下的 `.claude/` 兼容目录 |
