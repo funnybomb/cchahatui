@@ -82,6 +82,7 @@ export function anthropicToOpenaiChat(body: AnthropicRequest): OpenAIChatRequest
 
   // thinking → DeepSeek/OpenAI-compatible reasoning controls
   const isDeepSeekThinking = isDeepSeekThinkingModel(body.model)
+  const requestedEffort = normalizeReasoningEffort(body.output_config?.effort)
   if (body.thinking) {
     const budget = body.thinking.budget_tokens
     if (budget !== undefined) {
@@ -92,16 +93,27 @@ export function anthropicToOpenaiChat(body: AnthropicRequest): OpenAIChatRequest
       result.reasoning_effort = isDeepSeekThinking ? 'max' : 'high'
     }
   }
+  if (requestedEffort && body.thinking?.type !== 'disabled') {
+    result.reasoning_effort = requestedEffort
+  }
   if (isDeepSeekThinking) {
     result.thinking = {
       type: body.thinking?.type === 'disabled' ? 'disabled' : 'enabled',
     }
-    if (result.thinking.type === 'enabled' && !result.reasoning_effort) {
-      result.reasoning_effort = 'max'
+    if (result.thinking.type === 'enabled') {
+      result.reasoning_effort ??= 'max'
+    } else {
+      delete result.reasoning_effort
     }
   }
 
   return result
+}
+
+function normalizeReasoningEffort(value: unknown): OpenAIChatRequest['reasoning_effort'] | undefined {
+  return value === 'low' || value === 'medium' || value === 'high' || value === 'max'
+    ? value
+    : undefined
 }
 
 function isDeepSeekThinkingModel(model: string): boolean {

@@ -139,6 +139,34 @@ describe('anthropicToOpenaiChat', () => {
     expect(anthropicToOpenaiChat(highReq).reasoning_effort).toBe('high')
   })
 
+  test('output_config effort overrides DeepSeek thinking default', () => {
+    const req: AnthropicRequest = {
+      model: 'deepseek-v4-pro',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: 'Hi' }],
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium' },
+    }
+
+    const result = anthropicToOpenaiChat(req)
+    expect(result.thinking).toEqual({ type: 'enabled' })
+    expect(result.reasoning_effort).toBe('medium')
+  })
+
+  test('disabled DeepSeek thinking omits reasoning effort', () => {
+    const req: AnthropicRequest = {
+      model: 'deepseek-v4-pro',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: 'Hi' }],
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'max' },
+    }
+
+    const result = anthropicToOpenaiChat(req)
+    expect(result.thinking).toEqual({ type: 'disabled' })
+    expect(result.reasoning_effort).toBeUndefined()
+  })
+
   test('assistant message with tool_use', () => {
     const req: AnthropicRequest = {
       model: 'gpt-4',

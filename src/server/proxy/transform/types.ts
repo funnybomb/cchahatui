@@ -192,6 +192,9 @@ export type AnthropicRequest = {
     type: string
     budget_tokens?: number
   }
+  output_config?: {
+    effort?: 'low' | 'medium' | 'high' | 'max'
+  }
 }
 
 export type AnthropicResponse = {
