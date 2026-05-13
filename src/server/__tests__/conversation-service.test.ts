@@ -80,6 +80,7 @@ describe('ConversationService', () => {
     expect(env.ANTHROPIC_AUTH_TOKEN).toBe('test-token')
     expect(env.ANTHROPIC_BASE_URL).toBe('https://example.invalid/anthropic')
     expect(env.ANTHROPIC_MODEL).toBe('test-model')
+    expect(env.CLAUDE_CONFIG_DIR).toBe(tmpDir)
     expect(env.CLAUDE_CODE_DIAGNOSTICS_FILE).toBe(path.join(tmpDir, 'cchahatui', 'diagnostics', 'cli-diagnostics.jsonl'))
     await expect(fs.stat(path.dirname(env.CLAUDE_CODE_DIAGNOSTICS_FILE))).resolves.toBeTruthy()
   })

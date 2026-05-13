@@ -22,7 +22,10 @@ import {
   buildClaudeCliArgs,
   resolveClaudeCliLauncher,
 } from '../../utils/desktopBundledCli.js'
-import { getManagedConfigCandidateDirs } from '../../utils/cchahatuiConfig.js'
+import {
+  getCchahatuiRuntimeConfigDir,
+  getManagedConfigCandidateDirs,
+} from '../../utils/cchahatuiConfig.js'
 
 const MAX_CAPTURED_PROCESS_LINES = 80
 const MAX_CAPTURED_SDK_MESSAGES = 40
@@ -897,6 +900,7 @@ export class ConversationService {
 
     return {
       ...cleanEnv,
+      CLAUDE_CONFIG_DIR: getCchahatuiRuntimeConfigDir(cleanEnv),
       CLAUDE_CODE_ENABLE_TASKS: '1',
       CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING: '1',
       CLAUDE_CODE_DIAGNOSTICS_FILE: cliDiagnosticsPath,

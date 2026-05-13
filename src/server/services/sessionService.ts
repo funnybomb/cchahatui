@@ -1,8 +1,8 @@
 /**
  * Session Service — 会话文件的读写操作封装
  *
- * 读写 CLI 持久化在 ~/.claude/projects/{sanitized_path}/{sessionId}.jsonl 的会话数据，
- * 确保 Desktop App 与 CLI 的数据完全互通。
+ * 读写当前 cchahatui runtime config 下的 projects/{sanitized_path}/{sessionId}.jsonl。
+ * Desktop/server 默认使用自己的 app config，不读取共享 ~/.claude/projects。
  */
 
 import * as fs from 'node:fs/promises'
