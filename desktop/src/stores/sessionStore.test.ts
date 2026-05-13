@@ -75,6 +75,7 @@ describe('sessionStore', () => {
     expect(useSessionStore.getState().sessions[0]).toMatchObject({
       id: 'session-optimistic-1',
       title: 'New Session',
+      projectPath: 'D:/workspace/code/myself_code/cc-haha',
       workDir: 'D:/workspace/code/myself_code/cc-haha',
       workDirExists: true,
     })
@@ -142,6 +143,7 @@ describe('sessionStore', () => {
     await useSessionStore.getState().fetchSessions()
 
     expect(useTabStore.getState().tabs[0]?.title).toBe('使用bash写一个shell，随便写点什么东西')
+    expect(useSessionStore.getState().availableProjects).toContain('/workspace/project')
   })
 
   it('forwards direct branch switch repository options when creating a session', async () => {

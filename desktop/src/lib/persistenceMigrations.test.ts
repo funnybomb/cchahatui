@@ -44,15 +44,48 @@ describe('desktop persistence migrations', () => {
     expect(window.localStorage.getItem('unrelated-user-key')).toBe('keep')
   })
 
+  test('migrates legacy project memory records into the versioned shape', () => {
+    window.localStorage.setItem('cc-haha-project-memory', JSON.stringify({
+      '/workspace/project-a': 'Remember to use DeepSeek V4.',
+      '/workspace/project-b': {
+        summary: 'Prefer the desktop smoke lane.',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+      '/workspace/empty': '',
+    }))
+
+    const report = runDesktopPersistenceMigrations()
+
+    expect(report.migratedKeys).toContain('cc-haha-project-memory')
+    expect(JSON.parse(window.localStorage.getItem('cc-haha-project-memory') || '{}')).toEqual({
+      version: 1,
+      projects: {
+        '/workspace/project-a': {
+          projectPath: '/workspace/project-a',
+          summary: 'Remember to use DeepSeek V4.',
+          updatedAt: expect.any(String),
+        },
+        '/workspace/project-b': {
+          projectPath: '/workspace/project-b',
+          summary: 'Prefer the desktop smoke lane.',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      },
+    })
+  })
+
   test('removes malformed known keys without throwing during startup', () => {
     window.localStorage.setItem('cc-haha-open-tabs', '{"openTabs":')
+    window.localStorage.setItem('cc-haha-project-memory', '{"projects":')
     window.localStorage.setItem('cc-haha-theme', 'sepia')
 
     const report = runDesktopPersistenceMigrations()
 
     expect(report.migratedKeys).toContain('cc-haha-open-tabs')
+    expect(report.migratedKeys).toContain('cc-haha-project-memory')
     expect(report.migratedKeys).toContain('cc-haha-theme')
     expect(window.localStorage.getItem('cc-haha-open-tabs')).toBeNull()
+    expect(window.localStorage.getItem('cc-haha-project-memory')).toBeNull()
     expect(window.localStorage.getItem('cc-haha-theme')).toBeNull()
   })
 
@@ -92,6 +125,7 @@ describe('desktop persistence migrations', () => {
       'cc-haha-session-runtime',
       'cc-haha-theme',
       'cc-haha-locale',
+      'cc-haha-project-memory',
       DESKTOP_PERSISTENCE_VERSION_KEY,
     ]))
   })

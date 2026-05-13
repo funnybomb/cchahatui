@@ -32,6 +32,8 @@ export class H5ConnectionRequiredError extends Error {
   }
 }
 
+class FatalHealthcheckError extends Error {}
+
 export function isTauriRuntime() {
   if (typeof window === 'undefined') return false
   return '__TAURI_INTERNALS__' in window || '__TAURI__' in window
@@ -134,63 +136,77 @@ async function initializeBrowserServerUrl(fallbackUrl: string) {
   const query = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search)
     : null
-  const queryUrl = query?.get('serverUrl') ?? null
+  const queryUrl = normalizeServerUrl(query?.get('serverUrl') ?? null)
   const queryToken = normalizeToken(query?.get('h5Token') ?? query?.get('token'))
   const stored = readStoredH5Connection()
   const requestedUrl =
-    normalizeServerUrl(queryUrl) ??
+    queryUrl ??
     stored.serverUrl ??
     getConfiguredBrowserServerUrl(fallbackUrl) ??
     fallbackUrl
   const token = queryToken ?? stored.token
-  const browserH5Runtime = requiresH5AuthForServerUrl(requestedUrl)
+  const fallbackCandidates = getBrowserServerUrlCandidates({
+    fallbackUrl,
+    requestedUrl,
+    hasExplicitRequest: Boolean(queryUrl || stored.serverUrl || hasExplicitDefaultBaseUrl()),
+  })
+  let lastHealthError: unknown = null
 
-  setBaseUrl(requestedUrl)
-  setAuthToken(browserH5Runtime ? token : null)
-  if (browserH5Runtime) {
-    rememberStoredH5ServerUrl(requestedUrl)
-  }
+  for (const candidateUrl of fallbackCandidates) {
+    const browserH5Runtime = requiresH5AuthForServerUrl(candidateUrl)
 
-  try {
-    await waitForHealth(requestedUrl)
-  } catch (error) {
+    setBaseUrl(candidateUrl)
+    setAuthToken(browserH5Runtime ? token : null)
     if (browserH5Runtime) {
-      clearStoredH5Token()
-      throw normalizeBrowserH5Error(error, requestedUrl)
+      rememberStoredH5ServerUrl(candidateUrl)
     }
-    throw error
-  }
 
-  if (!browserH5Runtime) {
-    await ensureBrowserApiAccessibleWithoutH5(requestedUrl)
-    return requestedUrl
-  }
-
-  if (!token) {
-    clearStoredH5Token()
-    throw new H5ConnectionRequiredError(
-      'Enter your H5 token to continue.',
-      requestedUrl,
-      'missing-token',
-    )
-  }
-
-  try {
-    await verifyH5Access()
-  } catch (error) {
-    clearStoredH5Token()
-    throw normalizeBrowserH5Error(error, requestedUrl)
-  }
-
-  if (queryToken && typeof window !== 'undefined') {
     try {
-      window.localStorage.setItem(H5_TOKEN_STORAGE_KEY, queryToken)
-    } catch {
-      // Ignore storage failures after successful verification.
+      await waitForHealth(candidateUrl)
+    } catch (error) {
+      lastHealthError = error
+      if (browserH5Runtime) {
+        clearStoredH5Token()
+        throw normalizeBrowserH5Error(error, candidateUrl)
+      }
+      continue
     }
+
+    if (!browserH5Runtime) {
+      await ensureBrowserApiAccessibleWithoutH5(candidateUrl)
+      return candidateUrl
+    }
+
+    if (!token) {
+      clearStoredH5Token()
+      throw new H5ConnectionRequiredError(
+        'Enter your H5 token to continue.',
+        candidateUrl,
+        'missing-token',
+      )
+    }
+
+    try {
+      await verifyH5Access()
+    } catch (error) {
+      clearStoredH5Token()
+      throw normalizeBrowserH5Error(error, candidateUrl)
+    }
+
+    if (queryToken && typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(H5_TOKEN_STORAGE_KEY, queryToken)
+      } catch {
+        // Ignore storage failures after successful verification.
+      }
+    }
+
+    return candidateUrl
   }
 
-  return requestedUrl
+  throw lastHealthError instanceof Error
+    ? lastHealthError
+    : new Error('Server healthcheck failed')
 }
 
 async function waitForHealth(serverUrl: string) {
@@ -204,7 +220,9 @@ async function waitForHealth(serverUrl: string) {
       if (response.ok) {
         const contentType = response.headers.get('content-type') ?? ''
         if (!contentType.toLowerCase().includes('application/json')) {
-          lastError = new Error(`healthcheck returned non-JSON response from ${serverUrl}/health`)
+          throw new FatalHealthcheckError(
+            `Server healthcheck failed: healthcheck returned non-JSON response from ${serverUrl}/health`,
+          )
         } else {
           const body = await response.json().catch(() => null)
           if (body && typeof body === 'object' && 'status' in body && body.status === 'ok') {
@@ -216,6 +234,9 @@ async function waitForHealth(serverUrl: string) {
         lastError = new Error(`healthcheck returned ${response.status}`)
       }
     } catch (error) {
+      if (error instanceof FatalHealthcheckError) {
+        throw error
+      }
       lastError = error
     }
 
@@ -280,6 +301,25 @@ function getConfiguredBrowserServerUrl(fallbackUrl: string) {
   }
 
   return getSameOriginServerUrl()
+}
+
+function getBrowserServerUrlCandidates({
+  fallbackUrl,
+  hasExplicitRequest,
+  requestedUrl,
+}: {
+  fallbackUrl: string
+  hasExplicitRequest: boolean
+  requestedUrl: string
+}) {
+  if (hasExplicitRequest) return [requestedUrl]
+
+  return [
+    requestedUrl,
+    normalizeServerUrl(fallbackUrl),
+  ].filter((url, index, urls): url is string => (
+    Boolean(url) && urls.indexOf(url) === index
+  ))
 }
 
 export function isLoopbackHostname(hostname: string) {

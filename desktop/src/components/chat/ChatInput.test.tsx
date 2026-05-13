@@ -68,6 +68,7 @@ import { useSessionStore } from '../../stores/sessionStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useTabStore } from '../../stores/tabStore'
 import { useWorkspaceChatContextStore } from '../../stores/workspaceChatContextStore'
+import { useProjectMemoryStore } from '../../stores/projectMemoryStore'
 
 function okRepositoryContext() {
   return {
@@ -109,15 +110,18 @@ describe('ChatInput file mentions', () => {
   const initialSessionState = useSessionStore.getInitialState()
   const initialTabState = useTabStore.getInitialState()
   const initialWorkspaceContextState = useWorkspaceChatContextStore.getInitialState()
+  const initialProjectMemoryState = useProjectMemoryStore.getInitialState()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.clear()
     viewportMocks.isMobile = false
     useSettingsStore.setState({ locale: 'en' })
     useChatStore.setState(initialChatState, true)
     useSessionStore.setState(initialSessionState, true)
     useTabStore.setState(initialTabState, true)
     useWorkspaceChatContextStore.setState(initialWorkspaceContextState, true)
+    useProjectMemoryStore.setState(initialProjectMemoryState, true)
 
     useTabStore.setState({
       activeTabId: sessionId,
@@ -435,6 +439,31 @@ describe('ChatInput file mentions', () => {
       content: '记一下这个文件讲了什么东西。',
       modelContent: '@"/repo/backend/src/conditions.py" 记一下这个文件讲了什么东西。',
       attachments: [{ name: 'conditions.py', path: '/repo/backend/src/conditions.py' }],
+    })
+  })
+
+  it('adds project memory to model content while keeping the visible message clean', async () => {
+    useProjectMemoryStore.getState().setMemory('/repo', 'Prefer DeepSeek V4 for this project.')
+
+    render(<ChatInput compact />)
+
+    const input = screen.getByRole('textbox') as HTMLTextAreaElement
+    fireEvent.change(input, { target: { value: 'ship the sidebar', selectionStart: 16 } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(mocks.wsSend).toHaveBeenCalledWith(sessionId, {
+        type: 'user_message',
+        content: expect.stringContaining('Prefer DeepSeek V4 for this project.'),
+        attachments: [],
+      })
+    })
+    expect(mocks.wsSend.mock.calls[0]?.[1].content).toContain('<project-memory>')
+    const messages = useChatStore.getState().sessions[sessionId]?.messages ?? []
+    expect(messages[messages.length - 1]).toMatchObject({
+      type: 'user_text',
+      content: 'ship the sidebar',
+      modelContent: expect.stringContaining('Prefer DeepSeek V4 for this project.'),
     })
   })
 

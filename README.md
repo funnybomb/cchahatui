@@ -7,7 +7,7 @@
 <div align="center">
 
 [![Release](https://img.shields.io/github/v/release/funnybomb/cchahatui?label=release)](https://github.com/funnybomb/cchahatui/releases)
-[![Version](https://img.shields.io/badge/version-v0.2-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.2)
+[![Version](https://img.shields.io/badge/version-v0.3.0-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.3.0)
 [![Desktop](https://img.shields.io/badge/desktop-macOS%20%7C%20Windows-2ea44f)](#安装)
 [![DeepSeek](https://img.shields.io/badge/default-DeepSeek%20V4-1f6feb)](#deepseek-first)
 [![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db)](desktop/)
@@ -90,7 +90,7 @@ cchahatui 基于两个公开项目进行整合与改造：
 ### 下载桌面端
 
 1. 打开 [Releases](https://github.com/funnybomb/cchahatui/releases)。
-2. 下载 `v0.2` 对应的 macOS / Windows 安装包。
+2. 下载 `v0.3.0` 对应的 macOS / Windows 安装包。
 3. macOS 安装后从 `/Applications/cchahatui.app` 启动。
 4. 首次启动进入设置页，添加 DeepSeek 提供商和 API Key。
 

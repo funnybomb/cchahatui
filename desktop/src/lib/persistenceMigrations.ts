@@ -1,4 +1,9 @@
-export const CURRENT_DESKTOP_PERSISTENCE_SCHEMA_VERSION = 1
+import {
+  PROJECT_MEMORY_STORAGE_KEY,
+  normalizeProjectMemoryPersistence,
+} from '../stores/projectMemoryStore'
+
+export const CURRENT_DESKTOP_PERSISTENCE_SCHEMA_VERSION = 2
 export const DESKTOP_PERSISTENCE_VERSION_KEY = 'cc-haha.persistence.schemaVersion'
 
 type DesktopMigrationReport = {
@@ -112,6 +117,23 @@ function normalizeEnumKey(
   }
 }
 
+function migrateProjectMemory(storage: StorageLike, report: DesktopMigrationReport): void {
+  const raw = storage.getItem(PROJECT_MEMORY_STORAGE_KEY)
+  if (!raw) return
+
+  try {
+    const parsed = readJson(storage, PROJECT_MEMORY_STORAGE_KEY)
+    const normalized = normalizeProjectMemoryPersistence(parsed)
+    writeJson(storage, PROJECT_MEMORY_STORAGE_KEY, normalized)
+    if (JSON.stringify(normalized) !== JSON.stringify(parsed)) {
+      report.migratedKeys.push(PROJECT_MEMORY_STORAGE_KEY)
+    }
+  } catch {
+    storage.removeItem(PROJECT_MEMORY_STORAGE_KEY)
+    report.migratedKeys.push(PROJECT_MEMORY_STORAGE_KEY)
+  }
+}
+
 function runMigrationStep(
   report: DesktopMigrationReport,
   fallbackKey: string,
@@ -140,6 +162,7 @@ export function runDesktopPersistenceMigrations(storage: StorageLike | null = ge
   runMigrationStep(report, SESSION_RUNTIME_STORAGE_KEY, () => migrateSessionRuntime(storage, report))
   runMigrationStep(report, THEME_STORAGE_KEY, () => normalizeEnumKey(storage, THEME_STORAGE_KEY, ['light', 'dark'], report))
   runMigrationStep(report, LOCALE_STORAGE_KEY, () => normalizeEnumKey(storage, LOCALE_STORAGE_KEY, ['zh', 'en'], report))
+  runMigrationStep(report, PROJECT_MEMORY_STORAGE_KEY, () => migrateProjectMemory(storage, report))
   try {
     storage.setItem(DESKTOP_PERSISTENCE_VERSION_KEY, String(CURRENT_DESKTOP_PERSISTENCE_SCHEMA_VERSION))
   } catch {

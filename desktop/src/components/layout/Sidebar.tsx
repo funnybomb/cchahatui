@@ -3,17 +3,25 @@ import { useSessionStore } from '../../stores/sessionStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useTranslation } from '../../i18n'
 import { ProjectFilter } from './ProjectFilter'
+import { ProjectMemoryDialog } from './ProjectMemoryDialog'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import type { SessionListItem } from '../../types/session'
 import { useTabStore, SETTINGS_TAB_ID, SCHEDULED_TAB_ID } from '../../stores/tabStore'
 import { useChatStore } from '../../stores/chatStore'
+import { useProjectMemoryStore } from '../../stores/projectMemoryStore'
 
 const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 const isWindows = typeof navigator !== 'undefined' && /Win/.test(navigator.platform)
 
-type TimeGroup = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'older'
+const UNSCOPED_PROJECT_KEY = '__unscoped__'
 
-const TIME_GROUP_ORDER: TimeGroup[] = ['today', 'yesterday', 'last7days', 'last30days', 'older']
+type ProjectGroup = {
+  key: string
+  title: string
+  sessions: SessionListItem[]
+  modifiedAt: number
+  missingCount: number
+}
 
 type SidebarProps = {
   isMobile?: boolean
@@ -40,9 +48,12 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   const addToast = useUIStore((s) => s.addToast)
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen)
   const activeTabId = useTabStore((s) => s.activeTabId)
   const closeTab = useTabStore((s) => s.closeTab)
+  const chatSessions = useChatStore((s) => s.sessions)
   const disconnectSession = useChatStore((s) => s.disconnectSession)
+  const projectMemories = useProjectMemoryStore((s) => s.memories)
   const [searchQuery, setSearchQuery] = useState('')
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [pendingDeleteSessionId, setPendingDeleteSessionId] = useState<string | null>(null)
@@ -51,6 +62,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [lastSelectedSessionId, setLastSelectedSessionId] = useState<string | null>(null)
+  const [memoryProject, setMemoryProject] = useState<{ path: string; title: string } | null>(null)
 
   useEffect(() => {
     fetchSessions()
@@ -72,7 +84,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   const filteredSessions = useMemo(() => {
     let result = sessions
     if (selectedProjects.length > 0) {
-      result = result.filter((s) => selectedProjects.includes(s.projectPath))
+      result = result.filter((s) => getSessionProjectCandidates(s).some((projectPath) => selectedProjects.includes(projectPath)))
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
@@ -81,7 +93,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
     return result
   }, [sessions, selectedProjects, searchQuery])
 
-  const timeGroups = useMemo(() => groupByTime(filteredSessions), [filteredSessions])
+  const projectGroups = useMemo(() => groupByProject(filteredSessions, t('sidebar.other')), [filteredSessions, t])
   const showInitialLoading = isLoading && sessions.length === 0
   const filteredSessionIds = useMemo(() => filteredSessions.map((session) => session.id), [filteredSessions])
   const selectedCount = selectedSessionIds.size
@@ -223,13 +235,44 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
     if (isMobile) onRequestClose?.()
   }, [isMobile, onRequestClose])
 
-  const timeGroupLabels: Record<TimeGroup, string> = {
-    today: t('sidebar.timeGroup.today'),
-    yesterday: t('sidebar.timeGroup.yesterday'),
-    last7days: t('sidebar.timeGroup.last7days'),
-    last30days: t('sidebar.timeGroup.last30days'),
-    older: t('sidebar.timeGroup.older'),
-  }
+  const createSessionForProject = useCallback(async (projectPath?: string) => {
+    try {
+      const sessionId = await useSessionStore.getState().createSession(projectPath)
+      useTabStore.getState().openTab(sessionId, t('sidebar.newSession'))
+      useChatStore.getState().connectToSession(sessionId)
+      closeMobileDrawer()
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : t('sidebar.sessionListFailed'),
+      })
+    }
+  }, [addToast, closeMobileDrawer, t])
+
+  useEffect(() => {
+    const openProjectMemory = () => {
+      const currentTabId = useTabStore.getState().activeTabId
+      const currentSession = currentTabId
+        ? useSessionStore.getState().sessions.find((session) => session.id === currentTabId)
+        : null
+      const projectPath = currentSession ? getSessionProjectPath(currentSession) : ''
+
+      if (!projectPath || projectPath === UNSCOPED_PROJECT_KEY) {
+        setSidebarOpen(true)
+        addToast({ type: 'info', message: t('sidebar.projectMemoryNoProject') })
+        return
+      }
+
+      setSidebarOpen(true)
+      setMemoryProject({
+        path: projectPath,
+        title: getProjectTitle(projectPath, t('sidebar.other')),
+      })
+    }
+
+    window.addEventListener('cchahatui:open-project-memory', openProjectMemory)
+    return () => window.removeEventListener('cchahatui:open-project-memory', openProjectMemory)
+  }, [addToast, setSidebarOpen, t])
 
   useEffect(() => {
     if (!isBatchMode) return
@@ -314,23 +357,13 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
           collapsed={!expanded}
           label={t('sidebar.newSession')}
           touchFriendly={isMobile}
-          onClick={async () => {
-            try {
-              const currentTabId = useTabStore.getState().activeTabId
-              const currentSession = currentTabId
-                ? useSessionStore.getState().sessions.find((s) => s.id === currentTabId)
-                : null
-              const workDir = currentSession?.workDir || undefined
-              const sessionId = await useSessionStore.getState().createSession(workDir)
-              useTabStore.getState().openTab(sessionId, t('sidebar.newSession'))
-              useChatStore.getState().connectToSession(sessionId)
-              closeMobileDrawer()
-            } catch (error) {
-              addToast({
-                type: 'error',
-                message: error instanceof Error ? error.message : t('sidebar.sessionListFailed'),
-              })
-            }
+          onClick={() => {
+            const currentTabId = useTabStore.getState().activeTabId
+            const currentSession = currentTabId
+              ? useSessionStore.getState().sessions.find((s) => s.id === currentTabId)
+              : null
+            const projectPath = currentSession ? getSessionProjectPath(currentSession) : undefined
+            void createSessionForProject(projectPath === UNSCOPED_PROJECT_KEY ? undefined : projectPath)
           }}
           icon={<PlusIcon />}
         >
@@ -360,6 +393,9 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
             className="sidebar-section sidebar-section--visible relative z-20 flex-none px-3 pb-2"
             style={{ overflow: 'visible' }}
           >
+            <div className="mb-2 px-1 text-xs font-semibold text-[var(--color-text-tertiary)]">
+              {t('sidebar.projectsTitle')}
+            </div>
             <div className="flex items-center gap-1.5">
               <div className="flex h-9 min-w-0 flex-1 items-center rounded-[14px] border border-[var(--color-sidebar-search-border)] bg-[var(--color-sidebar-search-bg)] pl-1.5 pr-3 transition-colors focus-within:border-[var(--color-border-focus)]">
                 <ProjectFilter variant="embedded" />
@@ -464,114 +500,169 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                   {searchQuery ? t('sidebar.noMatching') : t('sidebar.noSessions')}
                 </div>
               )}
-              {TIME_GROUP_ORDER.map((group) => {
-                const items = timeGroups.get(group)
-                if (!items || items.length === 0) return null
-                const groupIds = items.map((session) => session.id)
+              {projectGroups.map((group) => {
+                const groupIds = group.sessions.map((session) => session.id)
                 const groupSelectedCount = groupIds.filter((id) => selectedSessionIds.has(id)).length
+                const hasMemory = Boolean(projectMemories[group.key]?.summary)
+                const isScopedProject = group.key !== UNSCOPED_PROJECT_KEY
                 return (
-                  <div key={group} className="mb-1">
-                    <div className="flex items-center justify-between px-2 pb-1 pt-4">
-                      <div className="text-[11px] font-semibold tracking-wide text-[var(--color-text-tertiary)]">
-                        {timeGroupLabels[group]}
+                  <div key={group.key} className="mb-2 pt-2">
+                    <div className="group/project flex items-center justify-between gap-2 px-1.5 pb-1 pt-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="material-symbols-outlined flex-shrink-0 text-[18px] text-[var(--color-text-tertiary)]">
+                          folder
+                        </span>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-[var(--color-text-primary)]" title={isScopedProject ? group.key : undefined}>
+                            {group.title}
+                          </div>
+                          <div className="truncate text-[11px] text-[var(--color-text-tertiary)]">
+                            {t('sidebar.projectSessionCount', { count: group.sessions.length })}
+                            {group.missingCount > 0 ? ` · ${t('sidebar.projectMissingCount', { count: group.missingCount })}` : ''}
+                          </div>
+                        </div>
                       </div>
-                      {isBatchMode && (
-                        <button
-                          type="button"
-                          onClick={() => toggleGroupSelection(groupIds)}
-                          className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] ${
-                            groupSelectedCount > 0
-                              ? 'text-[var(--color-brand)] hover:bg-[var(--color-brand)]/10'
-                              : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]'
-                          }`}
-                          aria-label={t('sidebar.batchSelectGroup', { group: timeGroupLabels[group] })}
-                        >
-                          {groupSelectedCount === groupIds.length
-                            ? t('sidebar.batchDeselectAll')
-                            : t('sidebar.batchSelectAll')}
-                        </button>
-                      )}
-                    </div>
-                    {items.map((session) => (
-                      <div key={session.id} className="relative">
-                        {renamingId === session.id ? (
-                          <input
-                            autoFocus
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            onBlur={handleFinishRename}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleFinishRename()
-                              if (e.key === 'Escape') {
-                                setRenamingId(null)
-                                setRenameValue('')
-                              }
-                            }}
-                            className="ml-1 w-full rounded-[var(--radius-md)] border border-[var(--color-border-focus)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
-                          />
-                        ) : (
+                      <div className="flex flex-shrink-0 items-center gap-0.5 opacity-100 md:opacity-0 md:transition-opacity md:group-hover/project:opacity-100 md:focus-within:opacity-100">
+                        {isBatchMode ? (
                           <button
-                            onClick={(event) => {
-                              if (isBatchMode) {
-                                handleBatchSessionClick(event, session.id)
-                                return
-                              }
-                              useTabStore.getState().openTab(session.id, session.title)
-                              useChatStore.getState().connectToSession(session.id)
-                              closeMobileDrawer()
-                            }}
-                            onContextMenu={(e) => handleContextMenu(e, session.id)}
-                            className={`
-                              group w-full rounded-[12px] px-3 ${isMobile ? 'py-3' : 'py-2'} text-left text-sm transition-colors duration-200
-                              ${selectedSessionIds.has(session.id)
-                                ? 'bg-[var(--color-sidebar-item-active)] text-[var(--color-text-primary)] ring-1 ring-[var(--color-brand)]/15'
-                                : session.id === activeTabId
-                                ? 'bg-[var(--color-sidebar-item-active)] text-[var(--color-text-primary)]'
-                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-sidebar-item-hover)]'
-                              }
-                            `}
-                            aria-pressed={isBatchMode ? selectedSessionIds.has(session.id) : undefined}
+                            type="button"
+                            onClick={() => toggleGroupSelection(groupIds)}
+                            className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] ${
+                              groupSelectedCount > 0
+                                ? 'text-[var(--color-brand)] hover:bg-[var(--color-brand)]/10'
+                                : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]'
+                            }`}
+                            aria-label={t('sidebar.batchSelectGroup', { group: group.title })}
                           >
-                            <span className="flex items-center gap-2.5">
-                              {isBatchMode ? (
-                                <span
-                                  className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
-                                    selectedSessionIds.has(session.id)
-                                      ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
-                                      : 'border-[var(--color-border)] bg-[var(--color-surface)]'
-                                  }`}
-                                  aria-hidden="true"
-                                >
-                                  {selectedSessionIds.has(session.id) && (
-                                    <span className="material-symbols-outlined text-[12px]">check</span>
-                                  )}
-                                </span>
-                              ) : (
-                                <span
-                                  className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                                  style={{
-                                    backgroundColor: session.id === activeTabId ? 'var(--color-brand)' : 'var(--color-text-tertiary)',
-                                    opacity: session.id === activeTabId ? 1 : 0.5,
-                                  }}
-                                />
-                              )}
-                              <span className="flex-1 truncate font-medium tracking-[-0.01em]">{session.title || 'Untitled'}</span>
-                              {!session.workDirExists && (
-                                <span
-                                  className="flex-shrink-0 text-[10px] text-[var(--color-warning)]"
-                                  title={session.workDir ?? ''}
-                                >
-                                  {t('sidebar.missingDir')}
-                                </span>
-                              )}
-                              <span className="flex-shrink-0 text-[10px] text-[var(--color-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100">
-                                {formatRelativeTime(session.modifiedAt)}
-                              </span>
-                            </span>
+                            {groupSelectedCount === groupIds.length
+                              ? t('sidebar.batchDeselectAll')
+                              : t('sidebar.batchSelectAll')}
                           </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!isScopedProject) return
+                                setMemoryProject({ path: group.key, title: group.title })
+                              }}
+                              disabled={!isScopedProject}
+                              className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] disabled:cursor-not-allowed disabled:opacity-40 ${
+                                hasMemory
+                                  ? 'text-[var(--color-brand)] hover:bg-[var(--color-brand)]/10'
+                                  : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]'
+                              }`}
+                              aria-label={t('sidebar.openProjectMemory', { project: group.title })}
+                              title={t('sidebar.openProjectMemory', { project: group.title })}
+                            >
+                              <span className="material-symbols-outlined text-[17px]">psychology_alt</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void createSessionForProject(isScopedProject ? group.key : undefined)}
+                              className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)]"
+                              aria-label={t('sidebar.projectNewSession', { project: group.title })}
+                              title={t('sidebar.projectNewSession', { project: group.title })}
+                            >
+                              <span className="material-symbols-outlined text-[17px]">add</span>
+                            </button>
+                          </>
                         )}
                       </div>
-                    ))}
+                    </div>
+                    {group.sessions.map((session) => {
+                      const sessionChatState = chatSessions[session.id]?.chatState ?? 'idle'
+                      return (
+                        <div key={session.id} className="relative">
+                          {renamingId === session.id ? (
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onBlur={handleFinishRename}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleFinishRename()
+                                if (e.key === 'Escape') {
+                                  setRenamingId(null)
+                                  setRenameValue('')
+                                }
+                              }}
+                              className="ml-1 w-full rounded-[var(--radius-md)] border border-[var(--color-border-focus)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
+                            />
+                          ) : (
+                            <button
+                              onClick={(event) => {
+                                if (isBatchMode) {
+                                  handleBatchSessionClick(event, session.id)
+                                  return
+                                }
+                                useTabStore.getState().openTab(session.id, session.title)
+                                useChatStore.getState().connectToSession(session.id)
+                                closeMobileDrawer()
+                              }}
+                              onContextMenu={(e) => handleContextMenu(e, session.id)}
+                              className={`
+                                group w-full rounded-[10px] px-3 ${isMobile ? 'py-3' : 'py-2'} text-left text-sm transition-colors duration-200
+                                ${selectedSessionIds.has(session.id)
+                                  ? 'bg-[var(--color-sidebar-item-active)] text-[var(--color-text-primary)] ring-1 ring-[var(--color-brand)]/15'
+                                  : session.id === activeTabId
+                                    ? 'bg-[var(--color-sidebar-item-active)] text-[var(--color-text-primary)]'
+                                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-sidebar-item-hover)]'
+                                }
+                              `}
+                              aria-pressed={isBatchMode ? selectedSessionIds.has(session.id) : undefined}
+                            >
+                              <span className="flex items-center gap-2.5">
+                                {isBatchMode ? (
+                                  <span
+                                    className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
+                                      selectedSessionIds.has(session.id)
+                                        ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
+                                        : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    {selectedSessionIds.has(session.id) && (
+                                      <span className="material-symbols-outlined text-[12px]">check</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                                    style={{
+                                      backgroundColor: session.id === activeTabId ? 'var(--color-brand)' : 'var(--color-text-tertiary)',
+                                      opacity: session.id === activeTabId ? 1 : 0.5,
+                                    }}
+                                  />
+                                )}
+                                <span className="flex-1 truncate font-medium tracking-[-0.01em]">{session.title || 'Untitled'}</span>
+                                {!session.workDirExists && (
+                                  <span
+                                    className="flex-shrink-0 text-[10px] text-[var(--color-warning)]"
+                                    title={session.workDir ?? ''}
+                                  >
+                                    {t('sidebar.missingDir')}
+                                  </span>
+                                )}
+                                {sessionChatState !== 'idle' ? (
+                                  <span
+                                    className="material-symbols-outlined flex-shrink-0 animate-spin text-[14px] text-[var(--color-brand)]"
+                                    aria-label={t('sidebar.sessionRunning')}
+                                    title={t('sidebar.sessionRunning')}
+                                  >
+                                    progress_activity
+                                  </span>
+                                ) : (
+                                  <span className="flex-shrink-0 text-[10px] text-[var(--color-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100">
+                                    {formatRelativeTime(session.modifiedAt, t)}
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}
@@ -599,6 +690,13 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
           </NavItem>
         </div>
       )}
+
+      <ProjectMemoryDialog
+        open={memoryProject !== null}
+        projectPath={memoryProject?.path ?? ''}
+        projectTitle={memoryProject?.title ?? ''}
+        onClose={() => setMemoryProject(null)}
+      />
 
       {contextMenu && (
         <div
@@ -673,28 +771,48 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   )
 }
 
-function groupByTime(sessions: SessionListItem[]): Map<TimeGroup, SessionListItem[]> {
-  const groups = new Map<TimeGroup, SessionListItem[]>()
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  const startOfYesterday = startOfToday - 86400000
-  const sevenDaysAgo = startOfToday - 7 * 86400000
-  const thirtyDaysAgo = startOfToday - 30 * 86400000
+function getSessionProjectPath(session: SessionListItem): string {
+  return session.projectPath || session.workDir || UNSCOPED_PROJECT_KEY
+}
+
+function getSessionProjectCandidates(session: SessionListItem): string[] {
+  return [session.projectPath, session.workDir].filter((projectPath): projectPath is string => Boolean(projectPath))
+}
+
+function getProjectTitle(projectPath: string, fallback: string): string {
+  if (!projectPath || projectPath === UNSCOPED_PROJECT_KEY) return fallback
+  const normalized = projectPath.replace(/[\\/]+$/, '')
+  const parts = normalized.split(/[\\/]+/).filter(Boolean)
+  return parts[parts.length - 1] || normalized || fallback
+}
+
+function groupByProject(sessions: SessionListItem[], fallbackTitle: string): ProjectGroup[] {
+  const groups = new Map<string, ProjectGroup>()
 
   for (const session of sessions) {
-    const ts = new Date(session.modifiedAt).getTime()
-    let group: TimeGroup
-    if (ts >= startOfToday) group = 'today'
-    else if (ts >= startOfYesterday) group = 'yesterday'
-    else if (ts >= sevenDaysAgo) group = 'last7days'
-    else if (ts >= thirtyDaysAgo) group = 'last30days'
-    else group = 'older'
-
-    if (!groups.has(group)) groups.set(group, [])
-    groups.get(group)!.push(session)
+    const key = getSessionProjectPath(session)
+    const modifiedAt = new Date(session.modifiedAt).getTime()
+    const group = groups.get(key) ?? {
+      key,
+      title: getProjectTitle(key, fallbackTitle),
+      sessions: [],
+      modifiedAt,
+      missingCount: 0,
+    }
+    group.sessions.push(session)
+    group.modifiedAt = Math.max(group.modifiedAt, Number.isFinite(modifiedAt) ? modifiedAt : 0)
+    if (session.workDirExists === false) group.missingCount += 1
+    groups.set(key, group)
   }
 
-  return groups
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      sessions: [...group.sessions].sort((a, b) => (
+        new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()
+      )),
+    }))
+    .sort((a, b) => b.modifiedAt - a.modifiedAt)
 }
 
 function NavItem({
@@ -738,16 +856,16 @@ function NavItem({
   )
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: ReturnType<typeof useTranslation>): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const min = Math.floor(diff / 60000)
-  if (min < 1) return 'now'
-  if (min < 60) return `${min}m`
+  if (min < 1) return t('sidebar.relative.now')
+  if (min < 60) return t('sidebar.relative.minutes', { count: min })
   const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h`
+  if (hr < 24) return t('sidebar.relative.hours', { count: hr })
   const day = Math.floor(hr / 24)
-  if (day < 30) return `${day}d`
-  return `${Math.floor(day / 30)}mo`
+  if (day < 30) return t('sidebar.relative.days', { count: day })
+  return t('sidebar.relative.months', { count: Math.floor(day / 30) })
 }
 
 function GitHubIcon() {

@@ -19,6 +19,7 @@ vi.mock('../../i18n', () => ({
       'common.retry': 'Retry',
       'common.loading': 'Loading...',
       'common.cancel': 'Cancel',
+      'common.save': 'Save',
       'common.delete': 'Delete',
       'common.rename': 'Rename',
       'sidebar.timeGroup.today': 'Today',
@@ -40,6 +41,23 @@ vi.mock('../../i18n', () => ({
       'sidebar.batchExit': 'Cancel batch mode',
       'sidebar.batchDeleteSucceeded': 'Deleted {count} sessions.',
       'sidebar.batchDeleteFailed': '{count} sessions could not be deleted.',
+      'sidebar.projectsTitle': 'Projects',
+      'sidebar.projectSessionCount': '{count} sessions',
+      'sidebar.projectMissingCount': '{count} missing',
+      'sidebar.projectNewSession': 'New session in {project}',
+      'sidebar.projectMemory': 'Project memory',
+      'sidebar.projectMemoryHint': 'Saved notes are added as private context.',
+      'sidebar.projectMemoryPlaceholder': 'Project facts...',
+      'sidebar.projectMemorySaved': 'Project memory saved.',
+      'sidebar.projectMemoryCleared': 'Project memory cleared.',
+      'sidebar.projectMemoryNoProject': 'Open a project session before editing project memory.',
+      'sidebar.openProjectMemory': 'Edit memory for {project}',
+      'sidebar.sessionRunning': 'Session running',
+      'sidebar.relative.now': 'now',
+      'sidebar.relative.minutes': '{count}m',
+      'sidebar.relative.hours': '{count}h',
+      'sidebar.relative.days': '{count}d',
+      'sidebar.relative.months': '{count}mo',
       'sidebar.collapse': 'Collapse sidebar',
       'sidebar.expand': 'Expand sidebar',
     }
@@ -57,6 +75,7 @@ import { useChatStore } from '../../stores/chatStore'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useTabStore } from '../../stores/tabStore'
 import { useUIStore } from '../../stores/uiStore'
+import { useProjectMemoryStore } from '../../stores/projectMemoryStore'
 
 describe('Sidebar', () => {
   const connectToSession = vi.fn()
@@ -65,15 +84,19 @@ describe('Sidebar', () => {
   const createSession = vi.fn()
   const deleteSession = vi.fn()
   const deleteSessions = vi.fn()
+  const renameSession = vi.fn()
   const addToast = vi.fn()
+  const initialProjectMemoryState = useProjectMemoryStore.getInitialState()
 
   beforeEach(() => {
+    window.localStorage.clear()
     connectToSession.mockReset()
     disconnectSession.mockReset()
     fetchSessions.mockReset()
     createSession.mockReset()
     deleteSession.mockReset()
     deleteSessions.mockReset()
+    renameSession.mockReset()
     addToast.mockReset()
 
     useTabStore.setState({ tabs: [], activeTabId: null })
@@ -90,6 +113,7 @@ describe('Sidebar', () => {
       createSession,
       deleteSession,
       deleteSessions,
+      renameSession,
     })
     useChatStore.setState({
       connectToSession,
@@ -99,6 +123,7 @@ describe('Sidebar', () => {
       sidebarOpen: true,
       addToast,
     } as Partial<ReturnType<typeof useUIStore.getState>>)
+    useProjectMemoryStore.setState({ ...initialProjectMemoryState, memories: {} }, true)
   })
 
   afterEach(() => {
@@ -292,6 +317,197 @@ describe('Sidebar', () => {
     render(<Sidebar />)
 
     expect(screen.getByTestId('sidebar-session-list-section')).toHaveClass('flex', 'flex-1', 'min-h-0', 'flex-col')
+  })
+
+  it('groups sessions by project and starts a project-scoped session from the group action', async () => {
+    createSession.mockResolvedValue('session-project-new')
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+        {
+          id: 'session-2',
+          title: 'Project B Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T01:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-b',
+          workDir: '/workspace/project-b',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    expect(screen.getByText('project-a')).toBeInTheDocument()
+    expect(screen.getByText('project-b')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'New session in project-a' }))
+    })
+
+    await waitFor(() => {
+      expect(createSession).toHaveBeenCalledWith('/workspace/project-a')
+      expect(connectToSession).toHaveBeenCalledWith('session-project-new')
+    })
+  })
+
+  it('filters project groups by both project path and work dir', () => {
+    useSessionStore.setState({
+      selectedProjects: ['/workspace/project-a'],
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+        {
+          id: 'session-2',
+          title: 'Project B Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T01:00:00.000Z',
+          messageCount: 1,
+          projectPath: '',
+          workDir: '/workspace/project-b',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    expect(screen.getByText('Project A Task')).toBeInTheDocument()
+    expect(screen.queryByText('Project B Task')).not.toBeInTheDocument()
+  })
+
+  it('opens project memory from the active project shortcut event', async () => {
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Open Session',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+    useTabStore.setState({
+      tabs: [{ sessionId: 'session-1', title: 'Open Session', type: 'session', status: 'idle' }],
+      activeTabId: 'session-1',
+    })
+
+    render(<Sidebar />)
+
+    fireEvent(window, new CustomEvent('cchahatui:open-project-memory'))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Project memory' })
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByText('project-a')).toBeInTheDocument()
+  })
+
+  it('shows a toast when project memory is requested without an active project', () => {
+    render(<Sidebar />)
+
+    fireEvent(window, new CustomEvent('cchahatui:open-project-memory'))
+
+    expect(useUIStore.getState().sidebarOpen).toBe(true)
+    expect(addToast).toHaveBeenCalledWith({
+      type: 'info',
+      message: 'Open a project session before editing project memory.',
+    })
+  })
+
+  it('opens project memory from a project group action and saves the note', async () => {
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit memory for project-a' }))
+    fireEvent.change(screen.getByPlaceholderText('Project facts...'), {
+      target: { value: 'Use desktop smoke tests.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Project memory saved.',
+      })
+    })
+  })
+
+  it('shows missing directories, running status, and supports inline rename', async () => {
+    renameSession.mockResolvedValue(undefined)
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Running Session',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: false,
+        },
+      ],
+    })
+    useChatStore.setState({
+      sessions: {
+        'session-1': { chatState: 'running' },
+      },
+    } as unknown as Partial<ReturnType<typeof useChatStore.getState>>)
+    useTabStore.setState({
+      tabs: [{ sessionId: 'session-1', title: 'Running Session', type: 'session', status: 'running' }],
+      activeTabId: 'session-1',
+    })
+
+    render(<Sidebar />)
+
+    expect(screen.getByText('Missing')).toBeInTheDocument()
+    expect(screen.getByLabelText('Session running')).toBeInTheDocument()
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /Running Session/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
+    const input = screen.getByDisplayValue('Running Session')
+    fireEvent.change(input, { target: { value: 'Renamed Session' } })
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' })
+    })
+
+    expect(renameSession).toHaveBeenCalledWith('session-1', 'Renamed Session')
   })
 
   it('keeps mobile navigation focused on chat sessions', async () => {

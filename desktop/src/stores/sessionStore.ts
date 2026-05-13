@@ -70,9 +70,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         syncedSessions = sessions
         const availableProjects = [
           ...new Set([
-            ...sessions.map((s) => s.projectPath).filter(Boolean),
-            ...projects.map((p) => p.projectPath).filter(Boolean),
-          ]),
+            ...sessions.flatMap((s) => [s.projectPath, s.workDir]),
+            ...projects.map((p) => p.projectPath),
+          ].filter((projectPath): projectPath is string => Boolean(projectPath))),
         ].sort()
         return { sessions, availableProjects, isLoading: false }
       })
@@ -94,7 +94,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       createdAt: now,
       modifiedAt: now,
       messageCount: 0,
-      projectPath: '',
+      projectPath: resolvedWorkDir ?? workDir ?? '',
       workDir: resolvedWorkDir ?? workDir ?? null,
       workDirExists: true,
     }

@@ -12,6 +12,7 @@ import {
   useWorkspaceChatContextStore,
   type WorkspaceChatReference,
 } from '../../stores/workspaceChatContextStore'
+import { formatProjectMemoryPrompt, useProjectMemoryStore } from '../../stores/projectMemoryStore'
 import { sessionsApi, type SessionGitInfo } from '../../api/sessions'
 import { PermissionModeSelector } from '../controls/PermissionModeSelector'
 import { ModelSelector } from '../controls/ModelSelector'
@@ -54,6 +55,11 @@ type ChatInputProps = {
 }
 
 const EMPTY_WORKSPACE_REFERENCES: WorkspaceChatReference[] = []
+
+function projectNameFromPath(projectPath: string): string {
+  const parts = projectPath.split(/[\\/]+/).filter(Boolean)
+  return parts[parts.length - 1] || projectPath
+}
 
 function workspaceReferenceToAttachment(reference: WorkspaceChatReference): Attachment {
   return {
@@ -125,6 +131,8 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
   const hasWorkspaceReferences = !isMemberSession && workspaceReferences.length > 0
   const isHeroComposer = variant === 'hero' && !isMemberSession && !compact
   const resolvedWorkDir = activeSession?.workDir || gitInfo?.workDir || undefined
+  const activeProjectPath = activeSession?.projectPath || activeSession?.workDir || gitInfo?.workDir || ''
+  const projectMemory = useProjectMemoryStore((s) => activeProjectPath ? s.memories[activeProjectPath] : undefined)
   const showLaunchControls = !isMemberSession && messageCount === 0
   const useCompactControls = compact || isMobileComposer
   const iconOnlyAction = compact || isMobileComposer
@@ -461,7 +469,10 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
     const workspaceReferencePrompt = !isMemberSession
       ? formatWorkspaceReferencePrompt(workspaceReferences)
       : ''
-    const contentForModel = [workspaceReferencePrompt, text].filter(Boolean).join('\n\n')
+    const projectMemoryPrompt = !isMemberSession && projectMemory?.summary
+      ? formatProjectMemoryPrompt(projectNameFromPath(activeProjectPath), projectMemory.summary)
+      : ''
+    const contentForModel = [projectMemoryPrompt, workspaceReferencePrompt, text].filter(Boolean).join('\n\n')
     const displayContent = text || (
       workspaceReferences.length > 0
         ? t('chat.workspaceReferencesOnly', { count: workspaceReferences.length })
