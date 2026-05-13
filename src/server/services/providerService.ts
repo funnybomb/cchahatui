@@ -1,9 +1,9 @@
 /**
  * Provider Service — preset-based provider configuration
  *
- * Storage: ~/.claude/cc-haha/providers.json (lightweight index)
- * Active provider env vars written to ~/.claude/cc-haha/settings.json
- * (isolated from the original Claude Code's ~/.claude/settings.json)
+ * Storage: cc-tui managed providers.json (lightweight index)
+ * Active provider env vars written to cc-tui managed settings.json
+ * (isolated from the original global settings.json)
  */
 
 import * as fs from 'fs/promises'
@@ -210,7 +210,22 @@ export class ProviderService {
       return index
     }
     const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
-    if (!apiKey || index.providers.length > 0) {
+    if (!apiKey) {
+      return index
+    }
+
+    const existingDefaultProvider = index.providers.find((provider) => provider.id === DEFAULT_DEEPSEEK_PROVIDER_ID)
+    if (!index.activeId && existingDefaultProvider && index.providers.length === 1) {
+      const activated: ProvidersIndex = {
+        ...index,
+        activeId: existingDefaultProvider.id,
+      }
+      await this.writeIndex(activated)
+      await this.syncToSettings(existingDefaultProvider)
+      return activated
+    }
+
+    if (index.providers.length > 0) {
       return index
     }
 
@@ -611,13 +626,13 @@ export class ProviderService {
       return { connectivity: step1 }
     }
 
-    // For native Anthropic format, no proxy pipeline to test
+    // For native cc-tui Messages format, no proxy pipeline to test.
     if (format === 'anthropic') {
       return { connectivity: step1 }
     }
 
     // ── Step 2: Full proxy pipeline ──────────────────────────
-    // Anthropic request → transform → upstream → transform back → validate
+    // cc-tui Messages request → transform → upstream → transform back → validate.
     const step2 = await this.testProxyPipeline(base, input.apiKey, input.modelId, format)
 
     return { connectivity: step1, proxy: step2 }
@@ -668,7 +683,7 @@ export class ProviderService {
     }
   }
 
-  /** Step 2: Full proxy pipeline — Anthropic → transform → upstream → transform back → validate. */
+  /** Step 2: Full proxy pipeline — cc-tui Messages → transform → upstream → transform back → validate. */
   private async testProxyPipeline(
     base: string,
     apiKey: string,
@@ -677,7 +692,7 @@ export class ProviderService {
   ): Promise<ProviderTestStepResult> {
     const start = Date.now()
     try {
-      // Build an Anthropic Messages API request (same shape as what CLI sends)
+      // Build a cc-tui Messages API request (same shape as what CLI sends).
       const anthropicReq: AnthropicRequest = {
         model: modelId,
         max_tokens: 64,
@@ -710,7 +725,7 @@ export class ProviderService {
           error: `Upstream HTTP ${response.status}: ${errText.slice(0, 200)}` }
       }
 
-      // Transform response back to Anthropic format
+      // Transform response back to cc-tui Messages format.
       const responseBody = await response.json()
       const anthropicRes = format === 'openai_chat'
         ? openaiChatToAnthropic(responseBody, modelId)
@@ -718,10 +733,10 @@ export class ProviderService {
 
       const latencyMs = Date.now() - start
 
-      // Validate the final Anthropic response
+      // Validate the final cc-tui Messages response.
       if (anthropicRes.type !== 'message' || !Array.isArray(anthropicRes.content)) {
         return { success: false, latencyMs, modelUsed: modelId,
-          error: 'Proxy transform produced invalid Anthropic response' }
+          error: 'Proxy transform produced invalid cc-tui Messages response' }
       }
 
       return { success: true, latencyMs, modelUsed: anthropicRes.model || modelId, httpStatus: response.status }
@@ -809,7 +824,7 @@ function validateResponseBody(
   }
   // anthropic
   if (body.type !== 'message' || !Array.isArray(body.content)) {
-    return { ok: false, error: 'Not a valid Anthropic Messages endpoint' }
+    return { ok: false, error: 'Not a valid cc-tui Messages endpoint' }
   }
   return { ok: true, model: (body.model as string) || undefined }
 }

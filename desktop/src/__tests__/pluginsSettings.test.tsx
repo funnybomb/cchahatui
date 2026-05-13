@@ -198,7 +198,7 @@ describe('Settings > Plugins tab', () => {
           isBuiltin: false,
           version: '1.2.3',
           description: 'GitHub integration',
-          authorName: 'Anthropic',
+          authorName: 'cc-tui',
           componentCounts: {
             commands: 1,
             agents: 1,
@@ -263,7 +263,7 @@ describe('Settings > Plugins tab', () => {
         isBuiltin: false,
         version: '1.2.3',
         description: 'GitHub integration',
-        authorName: 'Anthropic',
+        authorName: 'cc-tui',
         installPath: '/Users/test/.claude/plugins/cache/github',
         componentCounts: {
           commands: 1,
@@ -452,7 +452,7 @@ describe('Settings > Plugins tab', () => {
         enabled: false,
         hasErrors: false,
         isBuiltin: false,
-        description: 'Use Codex from Claude Code',
+        description: 'Use Codex from cc-tui',
         componentCounts: {
           commands: 0,
           agents: 1,

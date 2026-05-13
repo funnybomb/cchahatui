@@ -231,7 +231,7 @@ node --input-type=module <<NODE
 import { readFileSync } from 'node:fs'
 const captures = JSON.parse(readFileSync('${ARTIFACT_DIR}/captures.json', 'utf8'))
 const main = captures.find((capture) => capture.url.includes('/anthropic/v1/messages?beta=true'))
-if (!main) throw new Error('No DeepSeek Anthropic UI request captured')
+if (!main) throw new Error('No DeepSeek cc-tui Messages UI request captured')
 if (main.body?.thinking?.type !== 'disabled') throw new Error('DeepSeek request did not disable thinking')
 if (main.body?.output_config?.effort !== undefined) {
   throw new Error('DeepSeek request still sends output_config.effort with disabled thinking')
@@ -258,7 +258,7 @@ ui_eval "
 "${AB[@]}" wait 300 >/dev/null
 ui_eval "
 [...document.querySelectorAll('button')]
-  .find((node) => (node.textContent || '').includes('Anthropic Messages'))
+  .find((node) => (node.textContent || '').includes('cc-tui Messages'))
   ?.click();
 "
 "${AB[@]}" wait 100 >/dev/null
@@ -317,8 +317,8 @@ import { readFileSync } from 'node:fs'
 const captures = JSON.parse(readFileSync('${ARTIFACT_DIR}/captures.json', 'utf8'))
 const openai = captures.find((capture) => capture.url.includes('/v1/chat/completions'))
 if (!openai) throw new Error('No Custom OpenAI Chat UI request captured')
-if (openai.body?.thinking !== undefined) throw new Error('OpenAI Chat request leaked Anthropic thinking')
-if (openai.body?.output_config !== undefined) throw new Error('OpenAI Chat request leaked Anthropic output_config')
+if (openai.body?.thinking !== undefined) throw new Error('OpenAI Chat request leaked cc-tui Messages thinking')
+if (openai.body?.output_config !== undefined) throw new Error('OpenAI Chat request leaked cc-tui Messages output_config')
 if (openai.body?.reasoning_effort !== undefined) throw new Error('OpenAI Chat request unexpectedly sent reasoning_effort')
 NODE
 

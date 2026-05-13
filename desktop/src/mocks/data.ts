@@ -95,7 +95,7 @@ export const mockTranscript = {
     },
   ],
   teamBar: [
-    { id: 'lead', role: 'Lead Claude', active: false, color: '#87736D' },
+    { id: 'lead', role: 'Lead cc-tui', active: false, color: '#87736D' },
     { id: 'a2', role: 'Frontend Dev', active: true, color: '#dc2626' },
     { id: 'a3', role: 'Backend Architect', active: false, color: '#2563eb' },
   ],
@@ -140,15 +140,15 @@ export const mockScheduledTasks = {
 // ─── Session Controls ─────────────────────────────────────────────
 export const mockPermissionModes = [
   { id: 'ask', label: 'Ask permissions', description: 'Confirm every file edit or terminal command.', icon: 'lock' },
-  { id: 'auto', label: 'Auto accept edits', description: 'Claude writes to disk without asking.', icon: 'edit_note' },
+  { id: 'auto', label: 'Auto accept edits', description: 'cc-tui writes to disk without asking.', icon: 'edit_note' },
   { id: 'plan', label: 'Plan mode', description: 'Architecture & reasoning only. No writes.', icon: 'architecture' },
   { id: 'bypass', label: 'Bypass permissions', description: 'Full root access for shell and file system.', icon: 'warning' },
 ]
 
 export const mockModels = [
-  { id: 'opus', name: 'Opus 4.7', active: false },
-  { id: 'sonnet', name: 'Sonnet 4.6', active: true },
-  { id: 'haiku', name: 'Haiku 4.5', active: false },
+  { id: 'opus', name: 'deepseek-v4-pro', active: false },
+  { id: 'sonnet', name: 'deepseek-v4-pro', active: true },
+  { id: 'haiku', name: 'deepseek-v4-flash', active: false },
 ]
 
 export const mockEffortLevels = ['Low', 'Medium', 'High', 'Max']
@@ -186,7 +186,7 @@ export const mockToolInspection = {
 // ─── New Task Modal ───────────────────────────────────────────────
 export const mockNewTaskDefaults = {
   permissionModes: ['Restricted', 'Standard', 'Full Access'],
-  models: ['Claude 3.5 Sonnet', 'Claude 3.5 Haiku', 'Claude 3.5 Opus'],
+  models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v4-pro'],
   frequencies: ['Hourly', 'Daily at 9:00 AM', 'Weekly', 'Monthly', 'Custom cron'],
 }
 

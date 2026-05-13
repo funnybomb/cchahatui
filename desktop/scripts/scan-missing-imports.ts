@@ -5,7 +5,7 @@
  * specifier，找出磁盘上不存在的目标，给它们生成最小 stub 文件。
  *
  * 为什么需要：本 fork 的 src/ 大量使用 ant-internal 的 feature() macro 配
- * dynamic require/import，gating 一堆只在 Anthropic 内部 build 才存在的源文件。
+ * dynamic require/import，gating 一堆只在上游内部 build 才存在的源文件。
  * bun build --compile 在 DCE 之前必须先把所有 import specifier 都 resolve 到
  * 实际文件，找不到就直接 fail。
  *

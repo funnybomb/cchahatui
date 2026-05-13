@@ -19,20 +19,20 @@ import { OPENAI_CODEX_MODEL_CATALOG } from '../../services/openaiAuth/models.js'
 const DEFAULT_MODELS = [
   {
     id: 'claude-opus-4-7',
-    name: 'Opus 4.7',
-    description: 'Most capable for ambitious work',
+    name: 'cc-tui Max',
+    description: 'Official-compatible high capability model',
     context: '1m',
   },
   {
     id: 'claude-sonnet-4-6',
-    name: 'Sonnet 4.6',
-    description: 'Most efficient for everyday tasks',
+    name: 'cc-tui Standard',
+    description: 'Official-compatible everyday model',
     context: '200k',
   },
   {
     id: 'claude-haiku-4-5',
-    name: 'Haiku 4.5',
-    description: 'Fastest for quick answers',
+    name: 'cc-tui Fast',
+    description: 'Official-compatible fast model',
     context: '200k',
   },
 ] as const
@@ -85,7 +85,7 @@ function buildProviderModelList(models: {
     ? {
         id: models.haiku,
         name: models.haiku,
-        description: 'Haiku model',
+    description: 'Fast model',
         context: '',
       }
     : null)
@@ -93,7 +93,7 @@ function buildProviderModelList(models: {
     ? {
         id: models.sonnet,
         name: models.sonnet,
-        description: 'Sonnet model',
+    description: 'Balanced model',
         context: '',
       }
     : null)
@@ -101,7 +101,7 @@ function buildProviderModelList(models: {
     ? {
         id: models.opus,
         name: models.opus,
-        description: 'Opus model',
+    description: 'Power model',
         context: '',
       }
     : null)
@@ -217,7 +217,7 @@ async function handleCurrentModel(req: Request): Promise<Response> {
     let currentModelName: string
 
     if (activeProvider) {
-      // Provider is active — only use the provider-managed cc-haha settings.
+      // Provider is active — only use the provider-managed cc-tui settings.
       // This avoids leaking global ~/.claude/settings.json model choices into
       // the active provider flow.
       const providerEnvModel = env.ANTHROPIC_MODEL

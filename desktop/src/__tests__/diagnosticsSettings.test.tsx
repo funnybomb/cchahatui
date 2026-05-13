@@ -51,8 +51,8 @@ vi.mock('../api/providers', () => ({
   },
 }))
 
-vi.mock('../components/settings/ClaudeOfficialLogin', () => ({
-  ClaudeOfficialLogin: () => <div />,
+vi.mock('../components/settings/CcTuiOfficialLogin', () => ({
+  CcTuiOfficialLogin: () => <div />,
 }))
 
 vi.mock('../pages/AdapterSettings', () => ({

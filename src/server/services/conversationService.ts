@@ -1105,7 +1105,7 @@ export class ConversationService {
       )
     ) {
       return new ConversationStartupError(
-        'Desktop chat could not start because Claude CLI is not authenticated. Run `./bin/claude-haha /login` or provide valid API credentials, then retry.',
+        'Desktop chat could not start because cc-tui is not authenticated. Run `cchahatui /login` or provide valid API credentials, then retry.',
         'CLI_AUTH_REQUIRED',
       )
     }

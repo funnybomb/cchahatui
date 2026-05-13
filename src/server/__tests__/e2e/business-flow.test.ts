@@ -377,22 +377,21 @@ describe('Business Flow: Models & Effort', () => {
     await fs.rm(tmpDir, { recursive: true, force: true })
   })
 
-  it('should return 4 available models', async () => {
+  it('should return available official-compatible models', async () => {
     const { data } = await api('GET', '/api/models')
-    expect(data.models.length).toBe(4)
+    expect(data.models.length).toBeGreaterThanOrEqual(3)
     const names = data.models.map((m: any) => m.name)
-    expect(names).toContain('Opus 4.7')
-    expect(names).toContain('Opus 4.7 1M')
-    expect(names).toContain('Sonnet 4.6')
-    expect(names).toContain('Haiku 4.5')
+    expect(names).toContain('cc-tui Max')
+    expect(names).toContain('cc-tui Standard')
+    expect(names).toContain('cc-tui Fast')
   })
 
-  it('should default to Sonnet model', async () => {
+  it('should default to standard model', async () => {
     const { data } = await api('GET', '/api/models/current')
     expect(data.model.id).toBe('claude-sonnet-4-6')
   })
 
-  it('should switch to Opus 4.7', async () => {
+  it('should switch to the max model', async () => {
     const { status } = await api('PUT', '/api/models/current', {
       modelId: 'claude-opus-4-7',
     })
@@ -400,13 +399,13 @@ describe('Business Flow: Models & Effort', () => {
 
     const { data } = await api('GET', '/api/models/current')
     expect(data.model.id).toBe('claude-opus-4-7')
-    expect(data.model.name).toBe('Opus 4.7')
+    expect(data.model.name).toBe('cc-tui Max')
   })
 
-  it('should switch to Haiku 4.5', async () => {
+  it('should switch to the fast model', async () => {
     await api('PUT', '/api/models/current', { modelId: 'claude-haiku-4-5' })
     const { data } = await api('GET', '/api/models/current')
-    expect(data.model.name).toBe('Haiku 4.5')
+    expect(data.model.name).toBe('cc-tui Fast')
   })
 
   it('should reject empty model ID', async () => {

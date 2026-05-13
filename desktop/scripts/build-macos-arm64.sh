@@ -286,7 +286,7 @@ sign_canonical_app_bundle() {
 
 if [[ -n "${LATEST_APP}" ]]; then
   # Normalize the Tauri-produced app in place before copying it anywhere.
-  # Without this, opening target/.../bundle/macos/Claude Code Haha.app directly
+  # Without this, opening target/.../bundle/macos/cchahatui.app directly
   # uses the executable's ad-hoc signing identifier instead of the app bundle id,
   # which makes macOS notification authorization behave like a different app.
   sign_canonical_app_bundle "${LATEST_APP}"
@@ -296,7 +296,7 @@ if [[ -n "${LATEST_APP}" ]]; then
   # sidecar 和外层的 signing identifier,但这会改变 sidecar binary 的
   # code signature hash —— macOS Keychain ACL 按 hash 识别 caller,
   # 重签完再访问时会被 ACL 当作"陌生 binary"静默拒绝,导致 CLI 读不到
-  # OAuth token,最终请求打到 Anthropic 返回 403 "Request not allowed"。
+  # OAuth token,最终请求打到官方兼容上游返回 403 "Request not allowed"。
   # 这里只浅签外层 bundle,让 .app 拥有有效资源封印,同时保留 sidecar hash。
   cp -R "${LATEST_APP}" "${CANONICAL_OUTPUT_DIR}/"
   sign_canonical_app_bundle "${CANONICAL_OUTPUT_DIR}/${APP_BUNDLE_NAME}"

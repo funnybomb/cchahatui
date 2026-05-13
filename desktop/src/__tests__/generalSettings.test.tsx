@@ -64,8 +64,8 @@ vi.mock('qrcode', () => ({
   },
 }))
 
-vi.mock('../components/settings/ClaudeOfficialLogin', () => ({
-  ClaudeOfficialLogin: () => <div data-testid="claude-official-login" />,
+vi.mock('../components/settings/CcTuiOfficialLogin', () => ({
+  CcTuiOfficialLogin: () => <div data-testid="cctui-official-login" />,
 }))
 
 vi.mock('../pages/AdapterSettings', () => ({
@@ -562,7 +562,7 @@ describe('Settings > Providers tab', () => {
 
     render(<Settings />)
 
-    expect(screen.queryByTestId('claude-official-login')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('cctui-official-login')).not.toBeInTheDocument()
   })
 
   it('shows official OAuth status only after official provider is confirmed active', () => {
@@ -572,7 +572,7 @@ describe('Settings > Providers tab', () => {
 
     render(<Settings />)
 
-    expect(screen.getByTestId('claude-official-login')).toBeInTheDocument()
+    expect(screen.getByTestId('cctui-official-login')).toBeInTheDocument()
   })
 
   it('requires confirmation before deleting a provider', async () => {
@@ -621,7 +621,7 @@ describe('Settings > Providers tab', () => {
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /Anthropic Messages \(native\)/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /cc-tui Messages \(native-compatible\)/i }))
     fireEvent.click(within(dialog).getByRole('button', { name: /OpenAI Responses API \(proxy\)/i }))
 
     expect(within(dialog).getByRole('button', { name: /OpenAI Responses API \(proxy\)/i })).toBeInTheDocument()
@@ -668,7 +668,7 @@ describe('Settings > About tab', () => {
     useUpdateStore.setState({
       status: 'available',
       availableVersion: '0.1.5',
-      releaseNotes: '# Claude Code Haha v0.1.5\n\n- Fixed updater rendering\n- Added markdown support',
+      releaseNotes: '# cchahatui v0.1.5\n\n- Fixed updater rendering\n- Added markdown support',
       progressPercent: 0,
       downloadedBytes: 0,
       totalBytes: null,
@@ -685,7 +685,7 @@ describe('Settings > About tab', () => {
   it('renders release notes with markdown formatting', async () => {
     render(<Settings />)
 
-    expect(await screen.findByRole('heading', { name: 'Claude Code Haha v0.1.5' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'cchahatui v0.1.5' })).toBeInTheDocument()
     expect(screen.getByText('Fixed updater rendering')).toBeInTheDocument()
     expect(screen.getByText('Added markdown support')).toBeInTheDocument()
   })
@@ -694,7 +694,7 @@ describe('Settings > About tab', () => {
     useUpdateStore.setState({
       status: 'downloading',
       availableVersion: '0.1.5',
-      releaseNotes: '# Claude Code Haha v0.1.5',
+      releaseNotes: '# cchahatui v0.1.5',
       progressPercent: 0,
       downloadedBytes: 1536,
       totalBytes: null,

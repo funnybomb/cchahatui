@@ -91,15 +91,19 @@ function buildProviderChoices(
   officialName: string,
   labels: Record<'main' | 'haiku' | 'sonnet' | 'opus', string>,
 ): ProviderChoice[] {
-  return [
-    officialChoices(availableModels, activeId === null, officialName),
-    ...providers.map((provider) => ({
+  const providerChoices = providers
+    .map((provider) => ({
       providerId: provider.id,
       providerName: provider.name,
       isDefault: activeId === provider.id,
       models: buildProviderModels(provider, labels),
-    })),
-  ]
+    }))
+    .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
+  const official = officialChoices(availableModels, activeId === null, officialName)
+
+  return activeId === null
+    ? [official, ...providerChoices]
+    : [...providerChoices, official]
 }
 
 function resolveDefaultRuntimeSelection(

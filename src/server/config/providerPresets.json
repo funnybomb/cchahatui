@@ -1,7 +1,7 @@
 [
   {
     "id": "official",
-    "name": "Claude Official",
+    "name": "cc-tui Official Compatible",
     "baseUrl": "",
     "apiFormat": "anthropic",
     "defaultModels": {
@@ -11,7 +11,7 @@
       "opus": ""
     },
     "needsApiKey": false,
-    "websiteUrl": "https://www.anthropic.com/claude-code"
+    "websiteUrl": "https://github.com/Hmbown/DeepSeek-TUI"
   },
   {
     "id": "deepseek",
@@ -55,7 +55,7 @@
     "needsApiKey": true,
     "websiteUrl": "https://open.bigmodel.cn",
     "apiKeyUrl": "https://www.bigmodel.cn/invite?icode=d41B2qi8Z5xNwTGLNPPF3OZLO2QH3C0EBTSr%2BArzMw4%3D",
-    "promoText": "智谱 GLM 为 cc-haha 用户准备了专属邀请福利，使用此链接注册后可领取新用户权益。",
+    "promoText": "智谱 GLM 为 cc-tui 用户准备了专属邀请福利，使用此链接注册后可领取新用户权益。",
     "authStrategy": "auth_token",
     "defaultEnv": {
       "CC_HAHA_SEND_DISABLED_THINKING": "1"
@@ -132,7 +132,7 @@
     "needsApiKey": true,
     "websiteUrl": "https://jiekou.ai",
     "apiKeyUrl": "https://jiekou.ai/referral?invited_code=OBNU3K",
-    "promoText": "接口AI为 cc-haha 的用户提供官方资源与稳定高性能体验，订阅包价格为官方 8 折；绑定 GitHub 后还可领取 3 美元优惠券。",
+    "promoText": "接口AI为 cc-tui 的用户提供官方资源与稳定高性能体验，订阅包价格为官方 8 折；绑定 GitHub 后还可领取 3 美元优惠券。",
     "featured": true,
     "authStrategy": "auth_token",
     "defaultEnv": {
@@ -159,7 +159,7 @@
     "needsApiKey": true,
     "websiteUrl": "https://www.shengsuanyun.com",
     "apiKeyUrl": "https://www.shengsuanyun.com/?from=CH_LEJ88KWR",
-    "promoText": "胜算云为 cc-haha 的用户提供了特别福利，使用此链接注册的新用户可获 10 元模力及首充 10% 赠送！",
+    "promoText": "胜算云为 cc-tui 的用户提供了特别福利，使用此链接注册的新用户可获 10 元模力及首充 10% 赠送！",
     "featured": true,
     "authStrategy": "auth_token",
     "defaultEnv": {
@@ -186,7 +186,7 @@
     },
     "needsApiKey": false,
     "websiteUrl": "https://lmstudio.ai/docs/integrations/claude-code",
-    "promoText": "LM Studio 使用 Anthropic 兼容协议，Base URL 填 http://localhost:1234，不要追加 /v1。Claude Code 的提示词、工具和 Skill 会占用较多上下文，请在本地模型设置里把 Context Window 调大，建议至少 200K。",
+    "promoText": "LM Studio 使用 cc-tui 兼容协议，Base URL 填 http://localhost:1234，不要追加 /v1。cc-tui 的提示词、工具和 Skill 会占用较多上下文，请在本地模型设置里把 Context Window 调大，建议至少 200K。",
     "authStrategy": "auth_token_empty_api_key",
     "defaultEnv": {
       "ANTHROPIC_AUTH_TOKEN": "lmstudio"
@@ -205,7 +205,7 @@
     },
     "needsApiKey": false,
     "websiteUrl": "https://docs.ollama.com/integrations/claude-code",
-    "promoText": "Ollama 使用 Anthropic 兼容协议，Base URL 填 http://localhost:11434，不要追加 /v1。Claude Code 的提示词、工具和 Skill 会占用较多上下文，请在本地模型设置里把 Context Window 调大，建议至少 200K。",
+    "promoText": "Ollama 使用 cc-tui 兼容协议，Base URL 填 http://localhost:11434，不要追加 /v1。cc-tui 的提示词、工具和 Skill 会占用较多上下文，请在本地模型设置里把 Context Window 调大，建议至少 200K。",
     "authStrategy": "auth_token_empty_api_key",
     "defaultEnv": {
       "ANTHROPIC_AUTH_TOKEN": "ollama"

@@ -42,7 +42,7 @@ export default function SessionControls() {
       <header className="bg-[#FAF9F5] font-headline font-semibold tracking-wide text-sm fixed top-0 left-0 right-0 flex justify-between items-center px-6 h-12 z-40">
         <div className="flex items-center gap-6">
           <span className="text-sm font-bold text-[#1B1C1A] uppercase tracking-tighter">
-            Claude Code Companion
+            cc-tui
           </span>
           <nav className="hidden md:flex gap-4">
             <a className="text-[#1B1C1A] border-b-2 border-[#8F482F] pb-1 cursor-pointer active:opacity-70">
@@ -138,7 +138,7 @@ export default function SessionControls() {
                   <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold text-xs">
                     AI
                   </div>
-                  <span className="font-semibold text-sm">Claude 4.6 Sonnet</span>
+                  <span className="font-semibold text-sm">DeepSeek V4 Pro</span>
                 </div>
                 <p className="text-on-surface-variant leading-relaxed">
                   I've analyzed the{' '}
@@ -383,7 +383,7 @@ export default function SessionControls() {
         >
           <textarea
             className="w-full bg-transparent border-none focus:ring-0 focus:outline-none resize-none font-body text-on-surface placeholder:text-outline"
-            placeholder="Reply to Claude..."
+            placeholder="Reply to cc-tui..."
             rows={2}
           />
           <div className="flex justify-between items-center">
@@ -408,7 +408,7 @@ export default function SessionControls() {
                 <span className="material-symbols-outlined text-base">
                   {modelIcons[selectedModel] || 'smart_toy'}
                 </span>
-                {activeModel?.name || 'Sonnet 4.6'}
+                {activeModel?.name || 'deepseek-v4-pro'}
               </button>
 
               {/* Attach file button */}

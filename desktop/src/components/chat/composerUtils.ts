@@ -29,7 +29,7 @@ export const FALLBACK_SLASH_COMMANDS = [
   { name: 'init', description: 'Initialize project CLAUDE.md' },
   { name: 'bug', description: 'Report a bug' },
   { name: 'config', description: 'Open configuration' },
-  { name: 'login', description: 'Switch Anthropic accounts' },
+  { name: 'login', description: 'Switch cc-tui accounts' },
   { name: 'logout', description: 'Sign out of current account' },
   { name: 'memory', description: 'Edit CLAUDE.md memory files' },
   { name: 'model', description: 'Switch AI model' },

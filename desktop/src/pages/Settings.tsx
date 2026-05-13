@@ -30,7 +30,7 @@ import { TerminalSettings } from './TerminalSettings'
 import { DiagnosticsSettings } from './DiagnosticsSettings'
 import { ActivitySettings } from './ActivitySettings'
 import { useUIStore, type SettingsTab } from '../stores/uiStore'
-import { ClaudeOfficialLogin } from '../components/settings/ClaudeOfficialLogin'
+import { CcTuiOfficialLogin } from '../components/settings/CcTuiOfficialLogin'
 import { useUpdateStore } from '../stores/updateStore'
 import { formatBytes } from '../lib/formatBytes'
 import { isTauriRuntime } from '../lib/desktopRuntime'
@@ -212,6 +212,10 @@ function ProviderSettings() {
   }
 
   const isOfficialActive = hasLoadedProviders && activeId === null
+  const displayedProviders = useMemo(
+    () => [...providers].sort((left, right) => Number(activeId === right.id) - Number(activeId === left.id)),
+    [activeId, providers],
+  )
 
   return (
     <div className="max-w-2xl">
@@ -226,37 +230,6 @@ function ProviderSettings() {
         </Button>
       </div>
 
-      {/* Official provider — always visible at top */}
-      <div
-        className={`relative flex flex-col rounded-xl border transition-all mb-2 ${
-          isOfficialActive
-            ? 'border-[var(--color-brand)] bg-[var(--color-surface-container)] shadow-[var(--shadow-focus-ring)]'
-            : 'border-[var(--color-border)] hover:border-[var(--color-border-focus)] cursor-pointer'
-        }`}
-      >
-        <div
-          className="flex items-center gap-4 px-4 py-3.5"
-          onClick={() => !isOfficialActive && handleActivateOfficial()}
-        >
-          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isOfficialActive ? 'bg-[var(--color-success)]' : 'bg-[var(--color-text-tertiary)]'}`} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.providers.officialName')}</span>
-              {isOfficialActive && (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded border border-[var(--color-brand)]/18 bg-[var(--color-brand)]/14 text-[var(--color-brand)] leading-none">{t('settings.providers.default')}</span>
-              )}
-            </div>
-            <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{t('settings.providers.officialDesc')}</div>
-          </div>
-        </div>
-
-        {isOfficialActive && (
-          <div className="px-4 pb-4 pt-3 border-t border-[var(--color-border-separator)]">
-            <ClaudeOfficialLogin />
-          </div>
-        )}
-      </div>
-
       {/* Saved providers */}
       {isLoading && providers.length === 0 ? (
         <div className="flex justify-center py-8">
@@ -264,7 +237,7 @@ function ProviderSettings() {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {providers.map((provider) => {
+          {displayedProviders.map((provider) => {
             const isActive = activeId === provider.id
             const test = testResults[provider.id]
             const preset = presetMap.get(provider.presetId)
@@ -328,6 +301,37 @@ function ProviderSettings() {
           })}
         </div>
       )}
+
+      {/* Official-compatible fallback */}
+      <div
+        className={`relative mt-2 flex flex-col rounded-xl border transition-all ${
+          isOfficialActive
+            ? 'border-[var(--color-brand)] bg-[var(--color-surface-container)] shadow-[var(--shadow-focus-ring)]'
+            : 'border-[var(--color-border)] hover:border-[var(--color-border-focus)] cursor-pointer'
+        }`}
+      >
+        <div
+          className="flex items-center gap-4 px-4 py-3.5"
+          onClick={() => !isOfficialActive && handleActivateOfficial()}
+        >
+          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isOfficialActive ? 'bg-[var(--color-success)]' : 'bg-[var(--color-text-tertiary)]'}`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.providers.officialName')}</span>
+              {isOfficialActive && (
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded border border-[var(--color-brand)]/18 bg-[var(--color-brand)]/14 text-[var(--color-brand)] leading-none">{t('settings.providers.default')}</span>
+              )}
+            </div>
+            <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{t('settings.providers.officialDesc')}</div>
+          </div>
+        </div>
+
+        {isOfficialActive && (
+          <div className="px-4 pb-4 pt-3 border-t border-[var(--color-border-separator)]">
+            <CcTuiOfficialLogin />
+          </div>
+        )}
+      </div>
 
       {/* Create Modal — conditionally rendered so state resets on close */}
       {showCreateModal && (
@@ -734,7 +738,7 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
   const apiFormatItems = [
     {
       value: 'anthropic' as const,
-      label: t('settings.providers.apiFormatAnthropic'),
+      label: t('settings.providers.apiFormatCcTuiMessages'),
       icon: <span className="material-symbols-outlined text-[17px]">hub</span>,
     },
     {
@@ -748,7 +752,7 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
       icon: <span className="material-symbols-outlined text-[17px]">route</span>,
     },
   ]
-  const selectedApiFormatLabel = apiFormatItems.find((item) => item.value === apiFormat)?.label ?? t('settings.providers.apiFormatAnthropic')
+  const selectedApiFormatLabel = apiFormatItems.find((item) => item.value === apiFormat)?.label ?? t('settings.providers.apiFormatCcTuiMessages')
   const authStrategyItems = [
     {
       value: 'auth_token' as const,
@@ -857,7 +861,7 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
     const parsedModelContextWindows = buildModelContextWindows(models, modelContextInputs)
     setIsSubmitting(true)
     try {
-      // Write the edited cc-haha settings.json first so provider-specific model
+      // Write the edited cc-tui settings.json first so provider-specific model
       // settings never conflict with the user's global ~/.claude/settings.json.
       if (settingsJson.trim()) {
         try {

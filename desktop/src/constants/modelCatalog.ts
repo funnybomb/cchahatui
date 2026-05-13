@@ -5,20 +5,20 @@ export const OFFICIAL_DEFAULT_MODEL_ID = 'claude-opus-4-7'
 export const OFFICIAL_MODELS: ModelInfo[] = [
   {
     id: 'claude-opus-4-7',
-    name: 'Opus 4.7',
-    description: 'Most capable for ambitious work',
+    name: 'cc-tui Max',
+    description: 'Official-compatible high capability model',
     context: '1m',
   },
   {
     id: 'claude-sonnet-4-6',
-    name: 'Sonnet 4.6',
-    description: 'Most efficient for everyday tasks',
+    name: 'cc-tui Standard',
+    description: 'Official-compatible everyday model',
     context: '200k',
   },
   {
     id: 'claude-haiku-4-5',
-    name: 'Haiku 4.5',
-    description: 'Fastest for quick answers',
+    name: 'cc-tui Fast',
+    description: 'Official-compatible fast model',
     context: '200k',
   },
 ]

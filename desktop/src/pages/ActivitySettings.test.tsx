@@ -77,7 +77,7 @@ describe('ActivitySettings', () => {
 
     expect(screen.getByText('Token usage')).toBeInTheDocument()
     expect(screen.getByText('2025.05 - 2026.05')).toBeInTheDocument()
-    expect(screen.getByText('Based on local Claude Code CLI session transcripts')).toBeInTheDocument()
+    expect(screen.getByText('Based on local cc-tui CLI session transcripts')).toBeInTheDocument()
     expect(screen.getByText('Yesterday')).toBeInTheDocument()
     expect(screen.getByText('Today')).toBeInTheDocument()
     expect(screen.getByText('30 days')).toBeInTheDocument()

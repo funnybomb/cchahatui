@@ -113,10 +113,10 @@ function Get-StagedArtifactName {
 
   switch -Regex ($ArtifactName) {
     '^latest\.json$' { return 'latest.json' }
-    '\.msi\.zip\.sig$' { return "Claude-Code-Haha_${appVersion}_windows_x64_msi.msi.zip.sig" }
-    '\.msi\.zip$' { return "Claude-Code-Haha_${appVersion}_windows_x64_msi.msi.zip" }
-    '\.msi\.sig$' { return "Claude-Code-Haha_${appVersion}_windows_x64_msi.msi.sig" }
-    '\.msi$' { return "Claude-Code-Haha_${appVersion}_windows_x64_msi.msi" }
+    '\.msi\.zip\.sig$' { return "cchahatui_${appVersion}_windows_x64_msi.msi.zip.sig" }
+    '\.msi\.zip$' { return "cchahatui_${appVersion}_windows_x64_msi.msi.zip" }
+    '\.msi\.sig$' { return "cchahatui_${appVersion}_windows_x64_msi.msi.sig" }
+    '\.msi$' { return "cchahatui_${appVersion}_windows_x64_msi.msi" }
     default { return $ArtifactName }
   }
 }

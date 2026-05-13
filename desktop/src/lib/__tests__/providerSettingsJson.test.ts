@@ -8,7 +8,7 @@ import {
 } from '../providerSettingsJson'
 
 describe('provider settings JSON helpers', () => {
-  it('masks both Anthropic API key env vars even when the values differ', () => {
+  it('masks both official-compatible API key env vars even when the values differ', () => {
     const raw = JSON.stringify({
       env: {
         ANTHROPIC_API_KEY: 'stale-api-key',
@@ -24,7 +24,7 @@ describe('provider settings JSON helpers', () => {
     expect(masked.env.OTHER_VALUE).toBe('visible')
   })
 
-  it('restores masked Anthropic API key env vars from their previous field values', () => {
+  it('restores masked official-compatible API key env vars from their previous field values', () => {
     const previousRaw = JSON.stringify({
       env: {
         ANTHROPIC_API_KEY: 'previous-api-key',
