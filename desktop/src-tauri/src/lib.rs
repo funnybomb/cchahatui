@@ -910,7 +910,7 @@ fn terminal_environment(shell: &str) -> HashMap<String, String> {
 
 fn apply_app_runtime_environment(env: &mut HashMap<String, String>) {
     if std::env::var_os("CLAUDE_CONFIG_DIR").is_none() {
-        if let Some(config_dir) = default_claude_config_dir() {
+        if let Some(config_dir) = default_cchahatui_config_dir() {
             env.insert(
                 "CLAUDE_CONFIG_DIR".to_string(),
                 config_dir.to_string_lossy().to_string(),
@@ -919,7 +919,7 @@ fn apply_app_runtime_environment(env: &mut HashMap<String, String>) {
     }
 }
 
-fn default_claude_config_dir() -> Option<PathBuf> {
+fn default_cchahatui_config_dir() -> Option<PathBuf> {
     let app_support_dir = default_app_support_dir()?;
     let config_dir = app_support_dir.join(APP_CONFIG_DIR_NAME);
     let legacy_config_dir = app_support_dir.join(LEGACY_APP_CONFIG_DIR_NAME);

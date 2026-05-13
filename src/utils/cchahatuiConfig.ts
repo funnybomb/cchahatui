@@ -50,7 +50,7 @@ export function getCchahatuiRuntimeConfigDir(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   const configured = env.CLAUDE_CONFIG_DIR
-  if (configured && !isDefaultClaudeConfigDir(configured)) {
+  if (configured && !isSharedClaudeConfigDir(configured)) {
     return configured
   }
   return getDefaultCchahatuiConfigDir({ env })
@@ -63,7 +63,7 @@ export function ensureCchahatuiRuntimeConfigDirEnv(
   return env.CLAUDE_CONFIG_DIR
 }
 
-export function isDefaultClaudeConfigDir(configDir: string): boolean {
+export function isSharedClaudeConfigDir(configDir: string): boolean {
   return normalize(configDir) === normalize(join(homedir(), '.claude'))
 }
 

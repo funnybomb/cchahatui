@@ -970,8 +970,7 @@ export class ConversationService {
       return true
     }
 
-    const configDir =
-      process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
+    const configDir = getCchahatuiRuntimeConfigDir()
     for (const managedDir of getManagedConfigCandidateDirs(configDir)) {
       const providersIndexPath = path.join(managedDir, 'providers.json')
       const settingsPath = path.join(managedDir, 'settings.json')
@@ -1025,8 +1024,7 @@ export class ConversationService {
       return false
     }
 
-    const configDir =
-      process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
+    const configDir = getCchahatuiRuntimeConfigDir()
     for (const managedDir of getManagedConfigCandidateDirs(configDir)) {
       const settingsPath = path.join(managedDir, 'settings.json')
       try {
@@ -1073,7 +1071,7 @@ export class ConversationService {
 
   private clearStaleLock(sessionId: string): boolean {
     const lockDir = path.join(
-      process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'),
+      getCchahatuiRuntimeConfigDir(),
       '.lock',
     )
     const lockFile = path.join(lockDir, sessionId)
@@ -1343,7 +1341,7 @@ export class ConversationService {
     }
 
     const uploadDir = path.join(
-      process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'),
+      getCchahatuiRuntimeConfigDir(),
       'uploads',
       sessionId,
     )

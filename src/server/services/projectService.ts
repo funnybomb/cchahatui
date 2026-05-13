@@ -1,11 +1,11 @@
 import * as fs from 'fs/promises'
-import * as os from 'os'
 import * as path from 'path'
 import { ApiError } from '../middleware/errorHandler.js'
 import { readRecoverableJsonFile } from './recoverableJsonFile.js'
 import {
   ensureCchahatuiManagedConfigDirMigrated,
   getCchahatuiManagedConfigDir,
+  getCchahatuiRuntimeConfigDir,
 } from '../../utils/cchahatuiConfig.js'
 import { sanitizePath } from '../../utils/sessionStoragePortable.js'
 
@@ -163,7 +163,7 @@ export async function describeProjectPath(
 
 export class ProjectService {
   private getConfigDir(): string {
-    return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
+    return getCchahatuiRuntimeConfigDir()
   }
 
   private getManagedConfigDir(): string {

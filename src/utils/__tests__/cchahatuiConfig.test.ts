@@ -5,7 +5,7 @@ import {
   ensureCchahatuiRuntimeConfigDirEnv,
   getDefaultCchahatuiConfigDir,
   getCchahatuiRuntimeConfigDir,
-  isDefaultClaudeConfigDir,
+  isSharedClaudeConfigDir,
 } from '../cchahatuiConfig.js'
 
 describe('cchahatui runtime config', () => {
@@ -40,10 +40,10 @@ describe('cchahatui runtime config', () => {
     expect(ensureCchahatuiRuntimeConfigDirEnv(env)).toBe('/tmp/explicit')
   })
 
-  test('does not preserve the shared default ~/.claude path', () => {
+  test('keeps cchahatui isolated from shared ~/.claude', () => {
     const env = { CLAUDE_CONFIG_DIR: join(homedir(), '.claude') }
 
-    expect(isDefaultClaudeConfigDir(env.CLAUDE_CONFIG_DIR)).toBe(true)
+    expect(isSharedClaudeConfigDir(env.CLAUDE_CONFIG_DIR)).toBe(true)
     expect(getCchahatuiRuntimeConfigDir(env)).toContain(join('cchahatui', 'config'))
     expect(ensureCchahatuiRuntimeConfigDirEnv(env)).toContain(join('cchahatui', 'config'))
   })

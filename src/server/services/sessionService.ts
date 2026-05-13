@@ -25,6 +25,7 @@ import {
   type PreparedSessionWorkspace,
 } from './repositoryLaunchService.js'
 import { cleanSessionTitleSource } from '../../utils/sessionTitleText.js'
+import { getCchahatuiRuntimeConfigDir } from '../../utils/cchahatuiConfig.js'
 
 // ============================================================================
 // Types
@@ -229,7 +230,7 @@ export class SessionService {
   // --------------------------------------------------------------------------
 
   private getConfigDir(): string {
-    return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
+    return getCchahatuiRuntimeConfigDir()
   }
 
   private getProjectsDir(): string {
