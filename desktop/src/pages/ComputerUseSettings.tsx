@@ -44,6 +44,15 @@ async function openExternalUrl(url: string) {
   }
 }
 
+async function relaunchApp() {
+  try {
+    const { relaunch } = await import('@tauri-apps/plugin-process')
+    await relaunch()
+  } catch {
+    window.location.reload()
+  }
+}
+
 export function ComputerUseSettings() {
   const t = useTranslation()
   const [status, setStatus] = useState<ComputerUseStatus | null>(null)
@@ -66,6 +75,16 @@ export function ComputerUseSettings() {
   const [pythonPathSaving, setPythonPathSaving] = useState(false)
   const [pythonPathMessage, setPythonPathMessage] = useState<string | null>(null)
   const configMutationSeqRef = useRef(0)
+  const appsSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flashAppsSaved = useCallback(() => {
+    setAppsSaved(true)
+    if (appsSavedTimerRef.current) clearTimeout(appsSavedTimerRef.current)
+    appsSavedTimerRef.current = setTimeout(() => {
+      setAppsSaved(false)
+      appsSavedTimerRef.current = null
+    }, 1500)
+  }, [])
 
   const fetchStatus = useCallback(async () => {
     setCheckState('loading')
@@ -123,6 +142,12 @@ export function ComputerUseSettings() {
     fetchConfig()
   }, [fetchStatus, fetchConfig])
 
+  useEffect(() => {
+    return () => {
+      if (appsSavedTimerRef.current) clearTimeout(appsSavedTimerRef.current)
+    }
+  }, [])
+
   // Load apps when environment is ready
   const envReady = status?.venv.created && status?.dependencies.installed
   useEffect(() => {
@@ -167,8 +192,7 @@ export function ComputerUseSettings() {
       authorizedApps: newAuthorized,
       grantFlags: { clipboardRead: clipboardAccess, clipboardWrite: clipboardAccess, systemKeyCombos: systemKeys },
     }).then(() => {
-      setAppsSaved(true)
-      setTimeout(() => setAppsSaved(false), 1500)
+      flashAppsSaved()
     })
   }
 
@@ -191,8 +215,7 @@ export function ComputerUseSettings() {
     configMutationSeqRef.current += 1
     setComputerUseEnabled(value)
     computerUseApi.setAuthorizedApps({ enabled: value }).then(() => {
-      setAppsSaved(true)
-      setTimeout(() => setAppsSaved(false), 1500)
+      flashAppsSaved()
     })
   }
 
@@ -407,7 +430,7 @@ export function ComputerUseSettings() {
               {(accessibilityNeedsAttention || screenRecordingNeedsAttention) && (
                 <div className="flex flex-col gap-2 px-4 py-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
                   <p className="text-xs text-[var(--color-text-tertiary)]">{t('settings.computerUse.permRestartHint')}</p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {accessibilityNeedsAttention && (
                       <button
                         onClick={() => openSystemSettings('Privacy_Accessibility')}
@@ -426,6 +449,13 @@ export function ComputerUseSettings() {
                         {t('settings.computerUse.openScreenRecording')}
                       </button>
                     )}
+                    <button
+                      onClick={relaunchApp}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-accent)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)]"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">restart_alt</span>
+                      {t('settings.computerUse.restartApp')}
+                    </button>
                   </div>
                 </div>
               )}

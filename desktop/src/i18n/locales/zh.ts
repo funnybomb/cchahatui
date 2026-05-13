@@ -676,7 +676,8 @@ export const zh: Record<TranslationKey, string> = {
   'settings.computerUse.appsSaved': '已保存',
   'settings.computerUse.openAccessibility': '打开辅助功能设置',
   'settings.computerUse.openScreenRecording': '打开屏幕录制设置',
-  'settings.computerUse.permRestartHint': '授权后需重启 App 才能生效。',
+  'settings.computerUse.permRestartHint': 'macOS 权限只会给重新启动后的进程生效；授权后请完全重启 cchahatui，仅点“重新检测”不会让当前进程立刻拿到新权限。',
+  'settings.computerUse.restartApp': '重启 App',
   'settings.computerUse.flagClipboard': '剪贴板访问',
   'settings.computerUse.flagSystemKeys': '系统快捷键',
 

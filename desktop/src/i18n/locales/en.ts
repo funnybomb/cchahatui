@@ -674,7 +674,8 @@ export const en = {
   'settings.computerUse.appsSaved': 'Saved',
   'settings.computerUse.openAccessibility': 'Open Accessibility Settings',
   'settings.computerUse.openScreenRecording': 'Open Screen Recording Settings',
-  'settings.computerUse.permRestartHint': 'After granting, restart the app for it to take effect.',
+  'settings.computerUse.permRestartHint': 'macOS permissions apply to newly launched processes. After granting access, fully restart cchahatui; clicking Recheck alone cannot give the current process the new TCC grant.',
+  'settings.computerUse.restartApp': 'Restart App',
   'settings.computerUse.flagClipboard': 'Clipboard Access',
   'settings.computerUse.flagSystemKeys': 'System Key Combos',
 
