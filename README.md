@@ -1,174 +1,168 @@
-# Claude Code Haha
+# cchahatui
 
 <p align="center">
-  <img src="docs/images/app-icon.png" alt="Claude Code Haha" width="240">
+  <img src="docs/images/app-icon.png" alt="cchahatui" width="220">
 </p>
 
 <div align="center">
 
-[![GitHub Stars](https://img.shields.io/github/stars/NanmiCoder/cc-haha?style=social)](https://github.com/NanmiCoder/cc-haha/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/NanmiCoder/cc-haha?style=social)](https://github.com/NanmiCoder/cc-haha/network/members)
-[![GitHub Issues](https://img.shields.io/github/issues/NanmiCoder/cc-haha)](https://github.com/NanmiCoder/cc-haha/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/NanmiCoder/cc-haha)](https://github.com/NanmiCoder/cc-haha/pulls)
-[![License](https://img.shields.io/github/license/NanmiCoder/cc-haha)](https://github.com/NanmiCoder/cc-haha/blob/main/LICENSE)
-[![中文](https://img.shields.io/badge/🇨🇳_中文-当前-blue)](README.md)
-[![English](https://img.shields.io/badge/🇺🇸_English-Available-green)](README.en.md)
-[![Docs](https://img.shields.io/badge/📖_文档站点-Visit-D97757)](https://claudecode-haha.relakkesyang.org)
+[![Release](https://img.shields.io/github/v/release/funnybomb/cchahatui?label=release)](https://github.com/funnybomb/cchahatui/releases)
+[![Version](https://img.shields.io/badge/version-v0.2-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.2)
+[![Desktop](https://img.shields.io/badge/desktop-macOS%20%7C%20Windows-2ea44f)](#安装)
+[![DeepSeek](https://img.shields.io/badge/default-DeepSeek%20V4-1f6feb)](#deepseek-first)
+[![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db)](desktop/)
+[![License](https://img.shields.io/github/license/funnybomb/cchahatui)](LICENSE)
 
 </div>
 
-Claude Code Haha 基于 2026-03-31 从 Anthropic npm registry 泄露的 Claude Code 源码修复而来，现在主要是一个**桌面端 Claude Code 工作台**：把会话、多项目、分支 / Worktree、右侧代码改动、代码 Diff、权限审批、模型提供商、Computer Use、H5 远程访问、IM 接入和定时任务集中到一个 macOS / Windows APP 里。
+cchahatui 是一个 **DeepSeek-first 桌面 AI 编程工作台**。它保留 cc-haha 风格的会话、项目、权限、Agent、Skills、插件、MCP、Computer Use、IM 接入、定时任务和 Token 统计能力，同时把默认模型体验切到 DeepSeek V4：大上下文、流式思考、前缀缓存感知、OpenAI-compatible API。
 
 <p align="center">
-  <a href="#桌面端预览">桌面端预览</a> · <a href="#安装桌面端">安装桌面端</a> · <a href="#桌面端亮点">桌面端亮点</a> · <a href="#赞助与合作">赞助与合作</a> · <a href="#更多文档">更多文档</a>
+  <a href="#deepseek-first">DeepSeek-first</a> ·
+  <a href="#项目优势">项目优势</a> ·
+  <a href="#桌面端预览">桌面端预览</a> ·
+  <a href="#安装">安装</a> ·
+  <a href="#开发">开发</a>
 </p>
+
+---
+
+## DeepSeek-first
+
+| 能力 | cchahatui 做法 |
+|------|----------------|
+| 默认模型 | 默认走 DeepSeek V4，优先使用 `deepseek-v4-pro` / `deepseek-v4-flash` |
+| 100 万 Token 上下文 | 面向 DeepSeek V4 长上下文工作流，适合大仓库、多文件、多轮任务 |
+| 思考模式流式推理 | 支持 reasoning/thinking 内容以流式方式进入会话 UI，回答前思路可见 |
+| 前缀缓存感知 | 以 DeepSeek 前缀缓存为核心优化方向，减少重复上下文成本与等待 |
+| OpenAI-compatible | 使用 `/chat/completions` 兼容路径，方便接入官方 DeepSeek Key |
+| Claude Code 兼容体验 | 保留 cc-haha/Claude Code 类工作流，但品牌、配置、默认提供商转向 cchahatui + DeepSeek |
+
+---
+
+## 项目优势
+
+- **真正桌面 App**：不是浏览器套壳入口。Tauri 2 + React 原生桌面窗口，应用名、图标、配置目录独立为 `cchahatui`。
+- **项目级工作台**：会话绑定项目目录，支持多项目切换、分支选择、Worktree 隔离和右侧文件改动面板。
+- **代码改动可视化**：聊天、终端、文件 Diff、执行记录、权限确认集中在一个窗口里，不需要反复切终端。
+- **DeepSeek V4 优先**：默认模型、思考模式、长上下文、缓存感知都围绕 DeepSeek 调整，不再把 Claude 当作主路径。
+- **Agent 系统完整**：保留通用 Agent、Explore、Plan、verification、statusline 等内置 Agent 能力，并让它们继承 DeepSeek 提供商配置。
+- **插件/Skills/MCP 可扩展**：Skills 目录、MCP 服务、插件能力可管理，可扩展团队自己的工具链。
+- **Computer Use**：授权后支持截图、点击、输入、滚动等桌面控制流程，适合跨应用自动化。
+- **远程入口**：支持 H5 远程访问、IM 接入、定时任务，让桌面会话可以被手机或聊天工具接管。
+- **安全边界清楚**：权限页、屏幕录制、辅助功能、诊断日志、API Key 配置路径都有独立入口，便于排查。
 
 ---
 
 ## 桌面端预览
 
-Claude Code Haha 的桌面端把会话、多项目、分支 / Worktree、右侧代码改动、代码 Diff、权限确认、提供商配置和远程入口集中到一个图形化工作台里，适合不想长期停留在终端里的日常开发工作流。
-
-<p align="center">
-  <a href="https://github.com/NanmiCoder/cc-haha/releases"><img src="https://img.shields.io/badge/⬇_下载桌面端-macOS_%7C_Windows-D97757?style=for-the-badge" alt="下载桌面端"></a>
-  &nbsp;
-  <a href="docs/desktop/04-installation.md"><img src="https://img.shields.io/badge/📖_安装指南-Guide-gray?style=for-the-badge" alt="安装指南"></a>
-</p>
-
 <table>
   <tr>
-    <td align="center" width="25%"><img src="docs/images/desktop_ui/10_desktop_workspace.png" alt="桌面端工作台"><br><b>桌面端工作台</b></td>
-    <td align="center" width="25%"><img src="docs/images/desktop_ui/13_workspace_changes_worktree.png" alt="右侧代码改动与 Worktree"><br><b>右侧代码改动 & Worktree</b></td>
-    <td align="center" width="25%"><img src="docs/images/desktop_ui/02_edit_code.png" alt="代码编辑"><br><b>代码编辑 & Diff 视图</b></td>
-    <td align="center" width="25%"><img src="docs/images/desktop_ui/03_ask_question_and_permission.png" alt="权限控制"><br><b>权限控制 & AI 提问</b></td>
+    <td align="center" width="25%"><img src="docs/images/desktop_ui/10_desktop_workspace.png" alt="桌面工作台"><br><b>桌面工作台</b></td>
+    <td align="center" width="25%"><img src="docs/images/desktop_ui/13_workspace_changes_worktree.png" alt="Worktree 与代码改动"><br><b>Worktree & 改动</b></td>
+    <td align="center" width="25%"><img src="docs/images/desktop_ui/02_edit_code.png" alt="代码编辑"><br><b>代码编辑 & Diff</b></td>
+    <td align="center" width="25%"><img src="docs/images/desktop_ui/03_ask_question_and_permission.png" alt="权限控制"><br><b>权限控制</b></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><img src="docs/images/desktop_ui/12_h5_access.png" alt="H5 访问"><br><b>H5 远程访问</b></td>
-    <td align="center" width="25%"><img src="docs/images/desktop_ui/11_token_usage.png" alt="Token 用量"><br><b>Token 用量统计</b></td>
+    <td align="center" width="25%"><img src="docs/images/desktop_ui/05_settings.png" alt="设置"><br><b>DeepSeek 设置</b></td>
     <td align="center" width="25%"><img src="docs/images/desktop_ui/06_settings_computer_use.png" alt="Computer Use"><br><b>Computer Use</b></td>
+    <td align="center" width="25%"><img src="docs/images/desktop_ui/11_token_usage.png" alt="Token 用量"><br><b>Token 用量</b></td>
     <td align="center" width="25%"><img src="docs/images/desktop_ui/08_scheduled_task.png" alt="定时任务"><br><b>定时任务</b></td>
   </tr>
 </table>
 
 ---
 
-## 安装桌面端
+## 安装
 
-1. 前往 [Releases](https://github.com/NanmiCoder/cc-haha/releases) 下载 macOS 或 Windows 桌面端安装包。
-2. 首次启动后，在桌面端设置里配置模型提供商、API Key 和默认模型。
-3. 如果 macOS 提示应用无法打开，请按 [桌面端安装指南](docs/desktop/04-installation.md) 处理 Gatekeeper 权限。
+### 下载桌面端
 
-## 从源码启动 CLI
+1. 打开 [Releases](https://github.com/funnybomb/cchahatui/releases)。
+2. 下载 `v0.2` 对应的 macOS / Windows 安装包。
+3. macOS 安装后从 `/Applications/cchahatui.app` 启动。
+4. 首次启动进入设置页，添加 DeepSeek 提供商和 API Key。
 
-适合想调试底层 CLI、服务端或自行开发的用户：
+### API Key 安全
+
+- 不要把真实 DeepSeek Key 写入 README、issue、commit 或截图。
+- 本地可放在应用设置或 `.env`。
+- `.env` 已在 `.gitignore`，不会随仓库提交。
+
+---
+
+## 开发
+
+### 桌面端开发
 
 ```bash
 bun install
-cp .env.example .env
-./bin/claude-haha
+cd desktop
+bun install
+bun run tauri dev
 ```
 
-更多配置见 [环境变量](docs/guide/env-vars.md) 和 [全局使用](docs/guide/global-usage.md)。
+### 构建 macOS
+
+```bash
+cd desktop
+bun run build:macos-arm64
+```
+
+### 常用检查
+
+```bash
+bun run check:desktop
+bun run check:server
+bun run verify
+```
 
 ---
 
-## 桌面端亮点
+## 配置路径
 
-- **多会话工作台**：标签页、项目切换、终端入口和会话历史集中管理。
-- **分支 / Worktree 启动**：新会话可以选择仓库分支，并决定使用当前工作树还是隔离 Worktree。
-- **右侧代码改动面板**：聊天时直接在右侧查看已更改文件、增删行和当前工作区状态。
-- **代码修改可视化**：直接查看 AI 对文件的编辑、Diff 和执行过程。
-- **权限与确认流**：危险命令、工具调用和 AI 反问可以在桌面端集中审批。
-- **多模型提供商**：支持 Anthropic 兼容 API、第三方模型、WebSearch fallback 和本地配置。
-- **Computer Use**：让 Agent 在授权后截图、点击、输入并控制桌面应用。
-- **H5 远程访问**：用一次性令牌在手机或其他设备上接入当前桌面端会话。
-- **IM 接入**：通过 Telegram / 飞书 / 微信 / 钉钉远程对话、切换项目和审批权限。
-- **定时任务与用量统计**：在桌面端创建计划任务，并查看本机 Token 使用趋势。
+| 类型 | 路径 |
+|------|------|
+| 应用数据 | `~/Library/Application Support/cchahatui/` |
+| 诊断日志 | `~/Library/Application Support/cchahatui/claude/cc-haha/diagnostics/` |
+| 项目配置 | 项目目录下的 `.claude/` 兼容目录 |
+| 桌面源码 | `desktop/` |
+| 图标源文件 | `desktop/public/app-icon.png` / `desktop/src-tauri/icons/` |
+
+> 说明：部分底层兼容路径仍含 `claude` / `cc-haha` 字样，用于兼容原有运行时结构；产品入口、应用名、图标、默认提供商和用户心智以 `cchahatui` 为准。
 
 ---
 
-## 更多文档
+## 功能矩阵
+
+| 模块 | 状态 |
+|------|------|
+| DeepSeek V4 默认提供商 | 已启用 |
+| 100 万 Token 长上下文工作流 | 已对齐 |
+| 思考模式流式展示 | 已对齐 |
+| 前缀缓存感知 | 已对齐 |
+| 项目 / 会话管理 | 已启用 |
+| 分支 / Worktree | 已启用 |
+| 代码 Diff / 改动面板 | 已启用 |
+| 内置 Agents | 已启用 |
+| Skills / 插件 / MCP | 已启用 |
+| WebSearch fallback | 可配置 |
+| Computer Use | 需系统授权 |
+| H5 / IM / 定时任务 | 已保留 |
+
+---
+
+## 文档入口
 
 | 文档 | 说明 |
 |------|------|
-| [环境变量](docs/guide/env-vars.md) | 完整环境变量参考和配置方式 |
-| [第三方模型](docs/guide/third-party-models.md) | 接入 OpenAI / DeepSeek / Ollama 等非 Anthropic 模型 |
-| [贡献与质量门禁](docs/guide/contributing.md) | 本地测试、真实模型 baseline、PR 和 release 门禁 |
-| [记忆系统](docs/memory/01-usage-guide.md) | 跨会话持久化记忆的使用与实现 |
-| [多 Agent 系统](docs/agent/01-usage-guide.md) | 多代理编排、并行任务执行与 Teams 协作 |
-| [Skills 系统](docs/skills/01-usage-guide.md) | 可扩展能力插件、自定义工作流与条件激活 |
-| [IM 接入](docs/im/) | 通过 Telegram / 飞书 / 微信 / 钉钉远程对话、切换项目和审批权限 |
-| [Computer Use](docs/features/computer-use.md) | 桌面控制功能（截屏、鼠标、键盘）— [架构解析](docs/features/computer-use-architecture.md) |
-| [桌面端](docs/desktop/) | Tauri 2 + React 图形化客户端 — [快速上手](docs/desktop/01-quick-start.md) \| [架构设计](docs/desktop/02-architecture.md) \| [安装指南](docs/desktop/04-installation.md) |
-| [全局使用](docs/guide/global-usage.md) | 在任意目录启动 claude-haha |
-| [常见问题](docs/guide/faq.md) | 常见错误排查 |
-| [源码修复记录](docs/reference/fixes.md) | 相对于原始泄露源码的修复内容 |
-| [项目结构](docs/reference/project-structure.md) | 代码目录结构说明 |
-
----
-
-## 赞助与合作
-
-本项目由个人利用业余时间维护，欢迎企业或个人赞助支持持续开发，也可洽谈定制、集成或商务合作。
-
-<table>
-  <thead>
-    <tr>
-      <th width="220">赞助商</th>
-      <th align="left">介绍</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center" valign="middle">
-        <a href="https://jiekou.ai/referral?invited_code=OBNU3K">
-          <img src="docs/images/sponsors/jiekou-logo.svg" width="72" alt="接口AI"><br>
-          <strong>接口AI</strong>
-        </a>
-      </td>
-      <td valign="middle">
-        感谢 <a href="https://jiekou.ai/referral?invited_code=OBNU3K">接口AI</a> 赞助本项目！接口AI 提供官方资源直供与稳定高性能 API 体验，订阅包价格为官方 8 折；使用 <a href="https://jiekou.ai/referral?invited_code=OBNU3K">专属链接</a> 注册并绑定 GitHub，可领取 3 美元优惠券。
-      </td>
-    </tr>
-    <tr>
-      <td align="center" valign="middle">
-        <a href="https://www.shengsuanyun.com/?from=CH_LEJ88KWR">
-          <img src="docs/images/sponsors/shengsuanyun-logo.svg" width="180" alt="胜算云">
-        </a>
-      </td>
-      <td valign="middle">
-        感谢 <a href="https://www.shengsuanyun.com/?from=CH_LEJ88KWR">胜算云</a> 赞助本项目！胜算云是面向 AI Native Teams 的工业级 AI 任务并行执行平台，聚合 Claude、ChatGPT、Gemini 等海内外 LLM 及图片、视频多媒体模型算力；官方直连、非逆向，平台 SLA 可用性达 99.7%，可查看 <a href="https://watch.shengsuanyun.com/status/shengsuanyun">服务状态</a>。平台支持企业专属网关、成本与权限管控、智能路由、安全防护和 BYOK，按量与 tokens plan（即将上线）计费并可开票；使用 <a href="https://www.shengsuanyun.com/?from=CH_LEJ88KWR">专属链接</a> 注册可获 10 元模力及首充 10% 赠送。
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-📧 **联系邮箱**：relakkes@gmail.com
-
----
-
-## ☕ 请作者喝杯咖啡
-
-如果这个项目对您有帮助，欢迎打赏支持，您的每一份支持都是我持续更新的动力 ❤️
-
-<table>
-<tr>
-<td align="center" width="33%">
-<img src="docs/images/donate/wechat_pay.jpeg" width="250" alt="微信赞赏"><br>
-<b>微信赞赏</b>
-</td>
-<td align="center" width="33%">
-<img src="docs/images/donate/zfb_pay.png" width="250" alt="支付宝"><br>
-<b>支付宝</b>
-</td>
-<td align="center" width="33%">
-<a href="https://buymeacoffee.com/relakkes" target="_blank">
-<img src="docs/images/donate/bmc_button.png" width="250" alt="Buy Me a Coffee">
-</a><br>
-<b>Buy Me a Coffee</b>
-</td>
-</tr>
-</table>
+| [桌面端](docs/desktop/) | Tauri 2 + React 桌面客户端 |
+| [第三方模型](docs/guide/third-party-models.md) | DeepSeek / OpenAI / Ollama 等提供商配置 |
+| [环境变量](docs/guide/env-vars.md) | 本地环境变量和调试配置 |
+| [多 Agent 系统](docs/agent/01-usage-guide.md) | Agent 编排、并行任务、上下文传递 |
+| [Skills 系统](docs/skills/01-usage-guide.md) | 可扩展技能和条件激活 |
+| [MCP / Channel](docs/channel/01-channel-system.md) | MCP 服务接入 |
+| [Computer Use](docs/features/computer-use.md) | 桌面控制能力 |
+| [IM 接入](docs/im/) | Telegram / 飞书 / 微信 / 钉钉 |
 
 ---
 
@@ -176,39 +170,30 @@ cp .env.example .env
 
 | 类别 | 技术 |
 |------|------|
+| 桌面 App | Tauri 2 |
+| UI | React + Vite |
 | 语言 | TypeScript |
-| 桌面 APP | Tauri 2 |
-| 桌面 UI | React + Vite |
-| 本地运行时 | [Bun](https://bun.sh) |
-| 终端 UI | React + [Ink](https://github.com/vadimdemedes/ink) |
-| CLI 解析 | Commander.js |
-| API | Anthropic SDK |
+| 本地运行时 | Bun |
+| 终端 UI | Ink |
+| Provider API | DeepSeek / OpenAI-compatible Chat Completions |
 | 协议 | MCP, LSP |
-
-## 感谢
-
-感谢以下开源项目和社区实践为本项目提供参考与启发：
-
-- [React](https://github.com/facebook/react)：前端工程与组件化 UI 生态。
-- [Tauri](https://github.com/tauri-apps/tauri)：跨端桌面应用能力与工程实践。
-- [cc-switch](https://github.com/farion1231/cc-switch)：模型供应商配置能力参考。
 
 ---
 
-## ⭐ Star 趋势图
+## Star 趋势
 
-如果这个项目对您有帮助，请给个 ⭐ Star 支持一下，让更多的人看到 Claude Code Haha！
+如果 cchahatui 对你有帮助，可以给项目一个 Star，方便后续持续维护和推广。
 
-<a href="https://www.star-history.com/#NanmiCoder/cc-haha&Date">
+<a href="https://www.star-history.com/#funnybomb/cchahatui&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=NanmiCoder/cc-haha&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=NanmiCoder/cc-haha&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=NanmiCoder/cc-haha&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=funnybomb/cchahatui&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=funnybomb/cchahatui&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=funnybomb/cchahatui&type=Date" />
   </picture>
 </a>
 
 ---
 
-## Disclaimer
+## License
 
-本仓库基于 2026-03-31 从 Anthropic npm registry 泄露的 Claude Code 源码。所有原始源码版权归 [Anthropic](https://www.anthropic.com) 所有。仅供学习和研究用途。
+见 [LICENSE](LICENSE)。
