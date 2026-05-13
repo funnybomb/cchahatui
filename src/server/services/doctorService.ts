@@ -5,6 +5,7 @@ import type { Dirent } from 'node:fs'
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
 import {
   ensureCchahatuiManagedConfigDirMigrated,
+  getCchahatuiProjectConfigDir,
   getCchahatuiManagedConfigPathForDir,
 } from '../../utils/cchahatuiConfig.js'
 import { diagnosticsService } from './diagnosticsService.js'
@@ -72,6 +73,7 @@ export type DoctorRepairResult = {
 
 type DoctorServiceOptions = {
   configDir?: string
+  projectConfigDir?: string
   homeDir?: string
   projectRoot?: string
 }
@@ -87,12 +89,14 @@ type DoctorTarget = {
 
 export class DoctorService {
   private readonly configDir: string
+  private readonly projectConfigDir: string
   private readonly homeDir: string
   private readonly projectRoot?: string
   private readonly usesConfigDirOverride: boolean
 
   constructor(options: DoctorServiceOptions = {}) {
     this.configDir = options.configDir || getClaudeConfigHomeDir()
+    this.projectConfigDir = options.projectConfigDir || options.configDir || getCchahatuiProjectConfigDir()
     this.homeDir = options.homeDir || inferHomeDir(this.configDir)
     this.projectRoot = options.projectRoot
     this.usesConfigDirOverride = Boolean(options.configDir || process.env.CLAUDE_CONFIG_DIR)
@@ -182,10 +186,10 @@ export class DoctorService {
         'adapter-sessions',
         'Adapter sessions',
         'user',
-        path.join(this.configDir, 'adapter-sessions.json'),
+        path.join(this.projectConfigDir, 'adapter-sessions.json'),
       ),
       this.directoryTarget('user-skills', 'User skills', 'user', path.join(this.configDir, 'skills')),
-      this.directoryTarget('teams', 'Teams', 'user', path.join(this.configDir, 'teams')),
+      this.directoryTarget('teams', 'Teams', 'user', path.join(this.projectConfigDir, 'teams')),
       this.directoryTarget('plugins', 'Plugins', 'user', path.join(this.configDir, 'plugins')),
       this.directoryTarget(
         'cowork-plugins',
@@ -226,9 +230,9 @@ export class DoctorService {
       )
     }
 
-    const sessionFiles = await this.listJsonlFiles(path.join(this.configDir, 'projects'))
+    const sessionFiles = await this.listJsonlFiles(path.join(this.projectConfigDir, 'projects'))
     for (const filePath of sessionFiles) {
-      const relativePath = toPosix(path.relative(this.configDir, filePath))
+      const relativePath = toPosix(path.relative(this.projectConfigDir, filePath))
       targets.push(
         this.jsonlTarget(
           `session-jsonl:${relativePath}`,
@@ -380,6 +384,9 @@ export class DoctorService {
     if (this.projectRoot && isWithinRoot(filePath, this.projectRoot)) {
       return this.withAlias('<project>', filePath, this.projectRoot)
     }
+    if (this.projectConfigDir !== this.configDir && isWithinRoot(filePath, this.projectConfigDir)) {
+      return this.withAlias('<cchahatui-project-data>', filePath, this.projectConfigDir)
+    }
     if (isWithinRoot(filePath, this.configDir)) {
       return this.withAlias('~/.claude', filePath, this.configDir)
     }
@@ -393,6 +400,10 @@ export class DoctorService {
     let sanitized = diagnosticsService.sanitizeString(value)
     const replacements: Array<[string | undefined, string]> = [
       [this.projectRoot, '<project>'],
+      [
+        this.projectConfigDir !== this.configDir ? this.projectConfigDir : undefined,
+        '<cchahatui-project-data>',
+      ],
       [this.configDir, '~/.claude'],
       [this.homeDir, '~'],
     ]

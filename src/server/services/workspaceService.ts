@@ -5,7 +5,7 @@ import { promisify } from 'node:util'
 import { diffLines } from 'diff'
 import type { MessageEntry } from './sessionService.js'
 import type { FileHistorySnapshot } from '../../utils/fileHistory.js'
-import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
+import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
 
 const MAX_PREVIEW_BYTES = 1024 * 1024
 const MAX_UNTRACKED_STAT_BYTES = 256 * 1024
@@ -826,7 +826,7 @@ export class WorkspaceService {
     if (backupFileName === undefined) return undefined
     if (backupFileName === null) return null
     return await this.readTextFileOrNull(
-      path.join(getClaudeConfigHomeDir(), 'file-history', sessionId, backupFileName),
+      path.join(getCchahatuiProjectConfigDir(), 'file-history', sessionId, backupFileName),
     )
   }
 

@@ -7,7 +7,7 @@
 
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { getCchahatuiRuntimeConfigDir } from '../../utils/cchahatuiConfig.js'
+import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed'
 
@@ -34,7 +34,7 @@ export type TaskListSummary = {
 
 export class TaskService {
   private getConfigDir(): string {
-    return getCchahatuiRuntimeConfigDir()
+    return getCchahatuiProjectConfigDir()
   }
 
   private getTasksDir(): string {

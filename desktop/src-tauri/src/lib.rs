@@ -223,6 +223,7 @@ const SERVER_CONTROL_HOST: &str = "127.0.0.1";
 const APP_DISPLAY_NAME: &str = "cchahatui";
 const APP_CONFIG_DIR_NAME: &str = "config";
 const LEGACY_APP_CONFIG_DIR_NAME: &str = "claude";
+const PROJECT_CONFIG_DIR_ENV_NAME: &str = "CCHAHATUI_PROJECT_CONFIG_DIR";
 const MAIN_WINDOW_LABEL: &str = "main";
 const TRAY_SHOW_ID: &str = "tray_show";
 const TRAY_QUIT_ID: &str = "tray_quit";
@@ -909,10 +910,10 @@ fn terminal_environment(shell: &str) -> HashMap<String, String> {
 }
 
 fn apply_app_runtime_environment(env: &mut HashMap<String, String>) {
-    if std::env::var_os("CLAUDE_CONFIG_DIR").is_none() {
+    if std::env::var_os(PROJECT_CONFIG_DIR_ENV_NAME).is_none() {
         if let Some(config_dir) = default_cchahatui_config_dir() {
             env.insert(
-                "CLAUDE_CONFIG_DIR".to_string(),
+                PROJECT_CONFIG_DIR_ENV_NAME.to_string(),
                 config_dir.to_string_lossy().to_string(),
             );
         }

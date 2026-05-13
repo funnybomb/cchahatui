@@ -8,7 +8,7 @@ import { spawn } from 'child_process'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { ApiError } from '../middleware/errorHandler.js'
-import { getCchahatuiRuntimeConfigDir } from '../../utils/cchahatuiConfig.js'
+import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
 
 export type SearchResult = {
   file: string
@@ -78,7 +78,7 @@ export class SearchService {
       throw ApiError.badRequest('Search query is required')
     }
 
-    const configDir = getCchahatuiRuntimeConfigDir()
+    const configDir = getCchahatuiProjectConfigDir()
     const projectsDir = path.join(configDir, 'projects')
 
     const results: SessionSearchResult[] = []

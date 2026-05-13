@@ -23,9 +23,11 @@ import {
   resolveClaudeCliLauncher,
 } from '../../utils/desktopBundledCli.js'
 import {
-  getCchahatuiRuntimeConfigDir,
+  CCHAHATUI_PROJECT_CONFIG_DIR_ENV,
+  getCchahatuiProjectConfigDir,
   getManagedConfigCandidateDirs,
 } from '../../utils/cchahatuiConfig.js'
+import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
 
 const MAX_CAPTURED_PROCESS_LINES = 80
 const MAX_CAPTURED_SDK_MESSAGES = 40
@@ -900,7 +902,7 @@ export class ConversationService {
 
     return {
       ...cleanEnv,
-      CLAUDE_CONFIG_DIR: getCchahatuiRuntimeConfigDir(cleanEnv),
+      [CCHAHATUI_PROJECT_CONFIG_DIR_ENV]: getCchahatuiProjectConfigDir(cleanEnv),
       CLAUDE_CODE_ENABLE_TASKS: '1',
       CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING: '1',
       CLAUDE_CODE_DIAGNOSTICS_FILE: cliDiagnosticsPath,
@@ -970,7 +972,7 @@ export class ConversationService {
       return true
     }
 
-    const configDir = getCchahatuiRuntimeConfigDir()
+    const configDir = getClaudeConfigHomeDir()
     for (const managedDir of getManagedConfigCandidateDirs(configDir)) {
       const providersIndexPath = path.join(managedDir, 'providers.json')
       const settingsPath = path.join(managedDir, 'settings.json')
@@ -1024,7 +1026,7 @@ export class ConversationService {
       return false
     }
 
-    const configDir = getCchahatuiRuntimeConfigDir()
+    const configDir = getClaudeConfigHomeDir()
     for (const managedDir of getManagedConfigCandidateDirs(configDir)) {
       const settingsPath = path.join(managedDir, 'settings.json')
       try {
@@ -1071,7 +1073,7 @@ export class ConversationService {
 
   private clearStaleLock(sessionId: string): boolean {
     const lockDir = path.join(
-      getCchahatuiRuntimeConfigDir(),
+      getCchahatuiProjectConfigDir(),
       '.lock',
     )
     const lockFile = path.join(lockDir, sessionId)
@@ -1341,7 +1343,7 @@ export class ConversationService {
     }
 
     const uploadDir = path.join(
-      getCchahatuiRuntimeConfigDir(),
+      getCchahatuiProjectConfigDir(),
       'uploads',
       sessionId,
     )

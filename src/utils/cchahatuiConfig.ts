@@ -7,6 +7,7 @@ export const CCHAHATUI_MANAGED_CONFIG_DIR = 'cchahatui'
 export const LEGACY_CC_HAHA_MANAGED_CONFIG_DIR = 'cc-haha'
 export const CCHAHATUI_APP_NAME = 'cchahatui'
 export const CCHAHATUI_APP_CONFIG_DIR_NAME = 'config'
+export const CCHAHATUI_PROJECT_CONFIG_DIR_ENV = 'CCHAHATUI_PROJECT_CONFIG_DIR'
 
 type ConfigDirOptions = {
   homeDir?: string
@@ -46,21 +47,21 @@ export function getDefaultCchahatuiConfigDir(
   )
 }
 
-export function getCchahatuiRuntimeConfigDir(
+export function getCchahatuiProjectConfigDir(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const configured = env.CLAUDE_CONFIG_DIR
+  const configured = env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] || env.CLAUDE_CONFIG_DIR
   if (configured && !isSharedClaudeConfigDir(configured)) {
     return configured
   }
   return getDefaultCchahatuiConfigDir({ env })
 }
 
-export function ensureCchahatuiRuntimeConfigDirEnv(
+export function ensureCchahatuiProjectConfigDirEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  env.CLAUDE_CONFIG_DIR = getCchahatuiRuntimeConfigDir(env)
-  return env.CLAUDE_CONFIG_DIR
+  env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = getCchahatuiProjectConfigDir(env)
+  return env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
 }
 
 export function isSharedClaudeConfigDir(configDir: string): boolean {

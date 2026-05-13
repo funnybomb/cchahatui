@@ -5,7 +5,7 @@ import { readRecoverableJsonFile } from './recoverableJsonFile.js'
 import {
   ensureCchahatuiManagedConfigDirMigrated,
   getCchahatuiManagedConfigDir,
-  getCchahatuiRuntimeConfigDir,
+  getCchahatuiProjectConfigDir,
 } from '../../utils/cchahatuiConfig.js'
 import { sanitizePath } from '../../utils/sessionStoragePortable.js'
 
@@ -163,7 +163,7 @@ export async function describeProjectPath(
 
 export class ProjectService {
   private getConfigDir(): string {
-    return getCchahatuiRuntimeConfigDir()
+    return getCchahatuiProjectConfigDir()
   }
 
   private getManagedConfigDir(): string {

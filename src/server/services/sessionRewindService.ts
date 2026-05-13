@@ -6,7 +6,7 @@ import { ApiError } from '../middleware/errorHandler.js'
 import {
   type FileHistorySnapshot,
 } from '../../utils/fileHistory.js'
-import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
+import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
 import { conversationService } from './conversationService.js'
 import { sessionService, type MessageEntry } from './sessionService.js'
 
@@ -197,7 +197,7 @@ function expandTrackingPath(workDir: string, trackingPath: string): string {
 }
 
 function resolveBackupPath(sessionId: string, backupFileName: string): string {
-  return join(getClaudeConfigHomeDir(), 'file-history', sessionId, backupFileName)
+  return join(getCchahatuiProjectConfigDir(), 'file-history', sessionId, backupFileName)
 }
 
 function collectTrackedPaths(

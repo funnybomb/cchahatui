@@ -2,9 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import {
-  ensureCchahatuiRuntimeConfigDirEnv,
+  CCHAHATUI_PROJECT_CONFIG_DIR_ENV,
+  ensureCchahatuiProjectConfigDirEnv,
   getDefaultCchahatuiConfigDir,
-  getCchahatuiRuntimeConfigDir,
+  getCchahatuiProjectConfigDir,
   isSharedClaudeConfigDir,
 } from '../cchahatuiConfig.js'
 
@@ -33,26 +34,37 @@ describe('cchahatui runtime config', () => {
     })).toBe(join('/tmp/xdg', 'cchahatui', 'config'))
   })
 
-  test('preserves explicit CLAUDE_CONFIG_DIR', () => {
-    const env = { CLAUDE_CONFIG_DIR: '/tmp/explicit' }
+  test('preserves explicit project config dir', () => {
+    const env: NodeJS.ProcessEnv = { [CCHAHATUI_PROJECT_CONFIG_DIR_ENV]: '/tmp/project-content' }
 
-    expect(getCchahatuiRuntimeConfigDir(env)).toBe('/tmp/explicit')
-    expect(ensureCchahatuiRuntimeConfigDirEnv(env)).toBe('/tmp/explicit')
+    expect(getCchahatuiProjectConfigDir(env)).toBe('/tmp/project-content')
+    expect(ensureCchahatuiProjectConfigDirEnv(env)).toBe('/tmp/project-content')
+    expect(env.CLAUDE_CONFIG_DIR).toBeUndefined()
+  })
+
+  test('preserves explicit non-shared CLAUDE_CONFIG_DIR for tests and custom runs', () => {
+    const env: NodeJS.ProcessEnv = { CLAUDE_CONFIG_DIR: '/tmp/explicit' }
+
+    expect(getCchahatuiProjectConfigDir(env)).toBe('/tmp/explicit')
+    expect(ensureCchahatuiProjectConfigDirEnv(env)).toBe('/tmp/explicit')
+    expect(env.CLAUDE_CONFIG_DIR).toBe('/tmp/explicit')
   })
 
   test('keeps cchahatui isolated from shared ~/.claude', () => {
-    const env = { CLAUDE_CONFIG_DIR: join(homedir(), '.claude') }
+    const env: NodeJS.ProcessEnv = { CLAUDE_CONFIG_DIR: join(homedir(), '.claude') }
 
     expect(isSharedClaudeConfigDir(env.CLAUDE_CONFIG_DIR)).toBe(true)
-    expect(getCchahatuiRuntimeConfigDir(env)).toContain(join('cchahatui', 'config'))
-    expect(ensureCchahatuiRuntimeConfigDirEnv(env)).toContain(join('cchahatui', 'config'))
+    expect(getCchahatuiProjectConfigDir(env)).toContain(join('cchahatui', 'config'))
+    expect(ensureCchahatuiProjectConfigDirEnv(env)).toContain(join('cchahatui', 'config'))
+    expect(env.CLAUDE_CONFIG_DIR).toBe(join(homedir(), '.claude'))
   })
 
   test('sets isolated default when CLAUDE_CONFIG_DIR is absent', () => {
     const env: NodeJS.ProcessEnv = {}
-    const resolved = ensureCchahatuiRuntimeConfigDirEnv(env)
+    const resolved = ensureCchahatuiProjectConfigDirEnv(env)
 
     expect(resolved).toContain(join('cchahatui', 'config'))
-    expect(env.CLAUDE_CONFIG_DIR).toBe(resolved)
+    expect(env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]).toBe(resolved)
+    expect(env.CLAUDE_CONFIG_DIR).toBeUndefined()
   })
 })

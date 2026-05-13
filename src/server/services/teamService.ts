@@ -12,7 +12,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { ApiError } from '../middleware/errorHandler.js'
 import { writeToMailbox } from '../../utils/teammateMailbox.js'
-import { getCchahatuiRuntimeConfigDir } from '../../utils/cchahatuiConfig.js'
+import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ type ResolvedTeamConfig = {
 
 export class TeamService {
   private getConfigDir(): string {
-    return getCchahatuiRuntimeConfigDir()
+    return getCchahatuiProjectConfigDir()
   }
 
   private getTeamsDir(): string {

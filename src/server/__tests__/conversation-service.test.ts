@@ -4,6 +4,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { ConversationService } from '../services/conversationService.js'
 import { ProviderService } from '../services/providerService.js'
+import { CCHAHATUI_PROJECT_CONFIG_DIR_ENV } from '../../utils/cchahatuiConfig.js'
 
 describe('ConversationService', () => {
   let tmpDir: string
@@ -16,6 +17,7 @@ describe('ConversationService', () => {
   let originalOAuthToken: string | undefined
   let originalProviderManagedByHost: string | undefined
   let originalDiagnosticsFile: string | undefined
+  let originalProjectConfigDir: string | undefined
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cc-haha-conversation-service-'))
@@ -28,6 +30,7 @@ describe('ConversationService', () => {
     originalOAuthToken = process.env.CLAUDE_CODE_OAUTH_TOKEN
     originalProviderManagedByHost = process.env.CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST
     originalDiagnosticsFile = process.env.CLAUDE_CODE_DIAGNOSTICS_FILE
+    originalProjectConfigDir = process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
 
     process.env.CLAUDE_CONFIG_DIR = tmpDir
     process.env.ANTHROPIC_API_KEY = 'stale-parent-api-key'
@@ -40,6 +43,7 @@ describe('ConversationService', () => {
     delete process.env.CLAUDE_CODE_ENTRYPOINT
     delete process.env.CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST
     delete process.env.CLAUDE_CODE_DIAGNOSTICS_FILE
+    delete process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
   })
 
   afterEach(async () => {
@@ -70,6 +74,9 @@ describe('ConversationService', () => {
     if (originalDiagnosticsFile === undefined) delete process.env.CLAUDE_CODE_DIAGNOSTICS_FILE
     else process.env.CLAUDE_CODE_DIAGNOSTICS_FILE = originalDiagnosticsFile
 
+    if (originalProjectConfigDir === undefined) delete process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
+    else process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = originalProjectConfigDir
+
     await fs.rm(tmpDir, { recursive: true, force: true })
   })
 
@@ -81,6 +88,7 @@ describe('ConversationService', () => {
     expect(env.ANTHROPIC_BASE_URL).toBe('https://example.invalid/anthropic')
     expect(env.ANTHROPIC_MODEL).toBe('test-model')
     expect(env.CLAUDE_CONFIG_DIR).toBe(tmpDir)
+    expect(env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]).toBe(tmpDir)
     expect(env.CLAUDE_CODE_DIAGNOSTICS_FILE).toBe(path.join(tmpDir, 'cchahatui', 'diagnostics', 'cli-diagnostics.jsonl'))
     await expect(fs.stat(path.dirname(env.CLAUDE_CODE_DIAGNOSTICS_FILE))).resolves.toBeTruthy()
   })

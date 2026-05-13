@@ -1,6 +1,10 @@
 import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
-import { join } from 'path'
+import { join, normalize } from 'path'
+
+const CCHAHATUI_PROJECT_CONFIG_DIR_ENV = 'CCHAHATUI_PROJECT_CONFIG_DIR'
+const CCHAHATUI_APP_NAME = 'cchahatui'
+const CCHAHATUI_APP_CONFIG_DIR_NAME = 'config'
 
 // Memoized: 150+ callers, many on hot paths. Keyed off CLAUDE_CONFIG_DIR so
 // tests that change the env var get a fresh value without explicit cache.clear.
@@ -14,7 +18,39 @@ export const getClaudeConfigHomeDir = memoize(
 )
 
 export function getTeamsDir(): string {
-  return join(getClaudeConfigHomeDir(), 'teams')
+  const configured =
+    process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] ?? process.env.CLAUDE_CONFIG_DIR
+  if (
+    configured &&
+    normalize(configured) !== normalize(join(homedir(), '.claude'))
+  ) {
+    return join(configured, 'teams')
+  }
+
+  if (process.platform === 'darwin') {
+    return join(
+      homedir(),
+      'Library',
+      'Application Support',
+      CCHAHATUI_APP_NAME,
+      CCHAHATUI_APP_CONFIG_DIR_NAME,
+      'teams',
+    )
+  }
+  if (process.platform === 'win32') {
+    return join(
+      process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'),
+      CCHAHATUI_APP_NAME,
+      CCHAHATUI_APP_CONFIG_DIR_NAME,
+      'teams',
+    )
+  }
+  return join(
+    process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+    CCHAHATUI_APP_NAME,
+    CCHAHATUI_APP_CONFIG_DIR_NAME,
+    'teams',
+  )
 }
 
 /**

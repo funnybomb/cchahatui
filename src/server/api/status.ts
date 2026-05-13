@@ -10,7 +10,8 @@
 import * as path from 'path'
 import * as fs from 'fs/promises'
 import { ApiError, errorResponse } from '../middleware/errorHandler.js'
-import { getCchahatuiRuntimeConfigDir } from '../../utils/cchahatuiConfig.js'
+import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
+import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
 
 // 服务器启动时间（用于计算 uptime）
 const startedAt = Date.now()
@@ -88,6 +89,7 @@ function handleDiagnostics(): Response {
     platform: process.platform,
     arch: process.arch,
     configDir: getConfigDir(),
+    sharedConfigDir: getClaudeConfigHomeDir(),
     memory: {
       rss: process.memoryUsage.rss(),
       heapUsed: process.memoryUsage().heapUsed,
@@ -110,6 +112,7 @@ async function handleUser(): Promise<Response> {
 
   return Response.json({
     configDir,
+    sharedConfigDir: getClaudeConfigHomeDir(),
     projects,
   })
 }
@@ -117,7 +120,7 @@ async function handleUser(): Promise<Response> {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getConfigDir(): string {
-  return getCchahatuiRuntimeConfigDir()
+  return getCchahatuiProjectConfigDir()
 }
 
 function getVersion(): string {

@@ -2,6 +2,10 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
 
+const PROJECT_CONFIG_DIR_ENV = 'CCHAHATUI_PROJECT_CONFIG_DIR'
+const APP_NAME = 'cchahatui'
+const APP_CONFIG_DIR_NAME = 'config'
+
 export type SessionEntry = {
   sessionId: string
   workDir: string
@@ -10,8 +14,30 @@ export type SessionEntry = {
 
 type StoreData = Record<string, SessionEntry>
 
+function getDefaultCchahatuiConfigDir(): string {
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', APP_NAME, APP_CONFIG_DIR_NAME)
+  }
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), APP_NAME, APP_CONFIG_DIR_NAME)
+  }
+  return path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), APP_NAME, APP_CONFIG_DIR_NAME)
+}
+
+function isSharedClaudeConfigDir(configDir: string): boolean {
+  return path.normalize(configDir) === path.normalize(path.join(os.homedir(), '.claude'))
+}
+
+function getProjectContentConfigDir(): string {
+  const configured = process.env[PROJECT_CONFIG_DIR_ENV] || process.env.CLAUDE_CONFIG_DIR
+  if (configured && !isSharedClaudeConfigDir(configured)) {
+    return configured
+  }
+  return getDefaultCchahatuiConfigDir()
+}
+
 function getDefaultPath(): string {
-  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
+  const configDir = getProjectContentConfigDir()
   return path.join(configDir, 'adapter-sessions.json')
 }
 

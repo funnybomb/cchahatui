@@ -2,10 +2,9 @@
  * cchahatui Desktop App — HTTP + WebSocket Server
  *
  * 为桌面端 UI 提供 REST API 和 WebSocket 实时通信。
- * 默认读写 cchahatui 自己的 app config，不读取 ~/.claude。
+ * 项目记录默认读写 cchahatui app config；Skills/MCP/插件等全局配置仍可共享 ~/.claude。
  */
 
-import '../utils/initCchahatuiRuntimeConfig.js'
 import { handleApiRequest } from './router.js'
 import { handleWebSocket, type WebSocketData } from './ws/handler.js'
 import { resolveCors, type CorsResolution } from './middleware/cors.js'

@@ -1,3 +1,3 @@
-import { ensureCchahatuiRuntimeConfigDirEnv } from './cchahatuiConfig.js'
+import { ensureCchahatuiProjectConfigDirEnv } from './cchahatuiConfig.js'
 
-ensureCchahatuiRuntimeConfigDirEnv()
+ensureCchahatuiProjectConfigDirEnv()

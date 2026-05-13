@@ -13,12 +13,12 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { sendToSession, getActiveSessionIds } from '../ws/handler.js'
 import type { ServerMessage, TeamMemberStatus } from '../ws/events.js'
-import { getCchahatuiRuntimeConfigDir } from '../../utils/cchahatuiConfig.js'
+import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 function getTeamsDir(): string {
-  return path.join(getCchahatuiRuntimeConfigDir(), 'teams')
+  return path.join(getCchahatuiProjectConfigDir(), 'teams')
 }
 
 // ─── TeamWatcher ──────────────────────────────────────────────────────────

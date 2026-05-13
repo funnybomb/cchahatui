@@ -3,8 +3,8 @@ import { mkdir, readFile, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { z } from 'zod/v4'
 import { getSessionCreatedTeams } from '../../bootstrap/state.js'
+import { getCchahatuiProjectConfigDir } from '../cchahatuiConfig.js'
 import { logForDebugging } from '../debug.js'
-import { getTeamsDir } from '../envUtils.js'
 import { errorMessage, getErrnoCode } from '../errors.js'
 import { execFileNoThrowWithCwd } from '../execFileNoThrow.js'
 import { gitExe } from '../git.js'
@@ -114,7 +114,7 @@ export function sanitizeAgentName(name: string): string {
  * Gets the path to a team's directory
  */
 export function getTeamDir(teamName: string): string {
-  return join(getTeamsDir(), sanitizeName(teamName))
+  return join(getCchahatuiProjectConfigDir(), 'teams', sanitizeName(teamName))
 }
 
 /**
