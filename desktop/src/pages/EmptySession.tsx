@@ -8,6 +8,7 @@ import { useSessionRuntimeStore, DRAFT_RUNTIME_SELECTION_KEY } from '../stores/s
 import { useSettingsStore } from '../stores/settingsStore'
 import { useUIStore } from '../stores/uiStore'
 import { SETTINGS_TAB_ID, useTabStore } from '../stores/tabStore'
+import { formatProjectMemoryPrompt, useProjectMemoryStore } from '../stores/projectMemoryStore'
 import { RepositoryLaunchControls } from '../components/shared/RepositoryLaunchControls'
 import { PermissionModeSelector } from '../components/controls/PermissionModeSelector'
 import { ModelSelector } from '../components/controls/ModelSelector'
@@ -39,6 +40,11 @@ type Attachment = {
 }
 
 type Translate = ReturnType<typeof useTranslation>
+
+function projectNameFromPath(projectPath: string): string {
+  const parts = projectPath.split(/[\\/]+/).filter(Boolean)
+  return parts[parts.length - 1] || projectPath
+}
 
 function getApiErrorCode(error: unknown): string | null {
   if (!(error instanceof ApiError)) return null
@@ -112,6 +118,7 @@ export function EmptySession() {
     : undefined
   const draftModelLabel = draftRuntimeSelection?.modelId ?? currentModel?.name ?? currentModel?.id
   const isMobileComposer = useMobileViewport() && !isTauriRuntime()
+  const projectMemory = useProjectMemoryStore((state) => workDir ? state.memories[workDir] : undefined)
 
   useEffect(() => {
     textareaRef.current?.focus()
@@ -295,7 +302,14 @@ export function EmptySession() {
         mimeType: attachment.mimeType,
       }))
       if (text || attachmentPayload.length > 0) {
-        sendMessage(sessionId, text, attachmentPayload)
+        const projectMemoryPrompt = text && projectMemory?.summary
+          ? formatProjectMemoryPrompt(projectNameFromPath(workDir), projectMemory.summary)
+          : ''
+        const contentForModel = [projectMemoryPrompt, text].filter(Boolean).join('\n\n')
+        sendMessage(sessionId, contentForModel, attachmentPayload, {
+          displayContent: text,
+          displayAttachments: attachmentPayload,
+        })
       }
       setInput('')
       setAttachments([])

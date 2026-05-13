@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import type { FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { sessionsApi, type RecentProject } from '../../api/sessions'
 import { projectsApi } from '../../api/projects'
@@ -14,16 +15,27 @@ type DropdownPos = {
 
 type ProjectOption = {
   projectPath: string
+  realPath: string | null
   title: string
   subtitle: string | null
   isGit: boolean
   branch: string | null
   modifiedAt?: string
+  saved: boolean
 }
 
 let cachedProjects: RecentProject[] | null = null
 let cacheTimestamp = 0
 const CACHE_TTL = 30_000
+
+export function resetProjectFilterCacheForTests() {
+  cachedProjects = null
+  cacheTimestamp = 0
+}
+
+function isTauriRuntime() {
+  return typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
+}
 
 export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | 'embedded' }) {
   const t = useTranslation()
@@ -33,6 +45,9 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
   const [projects, setProjects] = useState<RecentProject[]>([])
   const [loading, setLoading] = useState(false)
   const [addingProject, setAddingProject] = useState(false)
+  const [removingProjectPath, setRemovingProjectPath] = useState<string | null>(null)
+  const [showManualAddProject, setShowManualAddProject] = useState(false)
+  const [manualProjectPath, setManualProjectPath] = useState('')
   const [dropdownPos, setDropdownPos] = useState<DropdownPos | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -106,11 +121,13 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
       if (!availableSet.has(project.projectPath)) continue
       optionsByPath.set(project.projectPath, {
         projectPath: project.projectPath,
+        realPath: project.realPath,
         title: project.repoName || project.projectName,
         subtitle: project.realPath,
         isGit: project.isGit,
         branch: project.branch,
         modifiedAt: project.modifiedAt,
+        saved: Boolean(project.saved),
       })
     }
 
@@ -118,10 +135,12 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
       if (optionsByPath.has(projectPath)) continue
       optionsByPath.set(projectPath, {
         projectPath,
+        realPath: null,
         title: fallbackProjectTitle(projectPath, t('sidebar.other')),
         subtitle: null,
         isGit: false,
         branch: null,
+        saved: false,
       })
     }
 
@@ -158,29 +177,30 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
 
   const selectAll = () => setSelectedProjects([])
 
-  const handleAddProject = async () => {
-    if (addingProject) return
+  const refreshProjectList = useCallback(async () => {
+    cachedProjects = null
+    cacheTimestamp = 0
+    const refreshed = await sessionsApi.getRecentProjects(200)
+    cachedProjects = refreshed.projects
+    cacheTimestamp = Date.now()
+    setProjects(refreshed.projects)
+    await fetchSessions()
+    return refreshed.projects
+  }, [fetchSessions])
+
+  const addProjectByPath = useCallback(async (projectPath: string) => {
+    const trimmed = projectPath.trim()
+    if (!trimmed || addingProject) return
+
     setAddingProject(true)
     try {
-      const { open: openDialog } = await import('@tauri-apps/plugin-dialog')
-      const selected = await openDialog({
-        directory: true,
-        multiple: false,
-        title: t('dirPicker.chooseProjectFolder'),
-      })
-      if (typeof selected !== 'string' || !selected) return
-
-      const { project } = await projectsApi.addProject(selected)
-      cachedProjects = null
-      cacheTimestamp = 0
-      const refreshed = await sessionsApi.getRecentProjects(200)
-      cachedProjects = refreshed.projects
-      cacheTimestamp = Date.now()
-      setProjects(refreshed.projects)
-      await fetchSessions()
+      const { project } = await projectsApi.addProject(trimmed)
+      await refreshProjectList()
       setSelectedProjects([project.projectPath])
       addToast({ type: 'success', message: t('sidebar.projectAdded') })
       setOpen(false)
+      setShowManualAddProject(false)
+      setManualProjectPath('')
     } catch (error) {
       addToast({
         type: 'error',
@@ -188,6 +208,56 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
       })
     } finally {
       setAddingProject(false)
+    }
+  }, [addToast, addingProject, refreshProjectList, setSelectedProjects, t])
+
+  const handleAddProject = async () => {
+    if (addingProject) return
+    if (!isTauriRuntime()) {
+      setShowManualAddProject(true)
+      return
+    }
+
+    try {
+      const { open: openDialog } = await import('@tauri-apps/plugin-dialog')
+      const selected = await openDialog({
+        directory: true,
+        multiple: false,
+        title: t('dirPicker.chooseProjectFolder'),
+      })
+      if (typeof selected === 'string' && selected) {
+        await addProjectByPath(selected)
+      }
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : t('sidebar.projectAddFailed'),
+      })
+    }
+  }
+
+  const handleManualAddProject = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void addProjectByPath(manualProjectPath)
+  }
+
+  const handleRemoveProject = async (option: ProjectOption) => {
+    if (!option.saved || !option.realPath || removingProjectPath) return
+    setRemovingProjectPath(option.realPath)
+    try {
+      await projectsApi.removeProject(option.realPath)
+      await refreshProjectList()
+      if (selectedProjects.includes(option.projectPath)) {
+        setSelectedProjects(selectedProjects.filter((projectPath) => projectPath !== option.projectPath))
+      }
+      addToast({ type: 'success', message: t('sidebar.projectRemoved') })
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : t('sidebar.projectRemoveFailed'),
+      })
+    } finally {
+      setRemovingProjectPath(null)
     }
   }
 
@@ -270,37 +340,94 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
             ) : (
               options.map((option) => {
                 const checked = !isAllSelected && selectedProjects.includes(option.projectPath)
+                const removing = removingProjectPath === option.realPath
                 return (
-                  <button
+                  <div
                     key={option.projectPath}
-                    type="button"
-                    onClick={() => toggleProject(option.projectPath)}
-                    className={`flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors ${
+                    className={`group/project-option flex w-full items-center gap-2 rounded-[12px] transition-colors ${
                       checked
                         ? 'bg-[var(--color-sidebar-item-active)]'
                         : 'hover:bg-[var(--color-sidebar-item-hover)]'
                     }`}
                   >
-                    {option.isGit ? <GitBranchIcon className="text-[var(--color-text-secondary)]" /> : <FolderIcon />}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{option.title}</div>
-                      {option.subtitle && (
-                        <div className="truncate pt-0.5 text-[11px] text-[var(--color-text-tertiary)] font-[var(--font-mono)]">
-                          {option.subtitle}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-shrink-0 items-center gap-1.5">
-                      {option.branch && (
-                        <span className="max-w-[88px] truncate text-[10px] text-[var(--color-text-tertiary)]">
-                          {option.branch}
+                    <button
+                      type="button"
+                      onClick={() => toggleProject(option.projectPath)}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-[12px] px-3 py-2.5 text-left"
+                    >
+                      {option.isGit ? <GitBranchIcon className="text-[var(--color-text-secondary)]" /> : <FolderIcon />}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{option.title}</div>
+                        {option.subtitle && (
+                          <div className="truncate pt-0.5 text-[11px] text-[var(--color-text-tertiary)] font-[var(--font-mono)]">
+                            {option.subtitle}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-1.5">
+                        {option.branch && (
+                          <span className="max-w-[88px] truncate text-[10px] text-[var(--color-text-tertiary)]">
+                            {option.branch}
+                          </span>
+                        )}
+                        {checked && <CheckIcon />}
+                      </div>
+                    </button>
+                    {option.saved && option.realPath && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void handleRemoveProject(option)
+                        }}
+                        disabled={Boolean(removingProjectPath)}
+                        className="mr-2 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-[var(--color-text-tertiary)] opacity-100 transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-error)] disabled:opacity-50 md:opacity-0 md:group-hover/project-option:opacity-100 md:focus-visible:opacity-100"
+                        aria-label={t('sidebar.removeProject', { project: option.title })}
+                        title={t('sidebar.removeProject', { project: option.title })}
+                      >
+                        <span className={`material-symbols-outlined text-[17px] ${removing ? 'animate-spin' : ''}`}>
+                          {removing ? 'progress_activity' : 'close'}
                         </span>
-                      )}
-                      {checked && <CheckIcon />}
-                    </div>
-                  </button>
+                      </button>
+                    )}
+                  </div>
                 )
               })
+            )}
+
+            {showManualAddProject && (
+              <form onSubmit={handleManualAddProject} className="mx-1 my-2 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-container-low)] p-2">
+                <label className="sr-only" htmlFor="project-filter-manual-path">
+                  {t('sidebar.projectPathPlaceholder')}
+                </label>
+                <input
+                  id="project-filter-manual-path"
+                  autoFocus
+                  value={manualProjectPath}
+                  onChange={(event) => setManualProjectPath(event.target.value)}
+                  placeholder={t('sidebar.projectPathPlaceholder')}
+                  className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2 font-[var(--font-mono)] text-xs text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-focus)]"
+                />
+                <div className="mt-2 flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowManualAddProject(false)
+                      setManualProjectPath('')
+                    }}
+                    className="rounded-md px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addingProject || !manualProjectPath.trim()}
+                    className="rounded-md bg-[var(--color-brand)] px-2.5 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    {addingProject ? t('common.loading') : t('common.add')}
+                  </button>
+                </div>
+              </form>
             )}
 
             <div className="mx-3 my-2 border-t border-[var(--color-border)]" />

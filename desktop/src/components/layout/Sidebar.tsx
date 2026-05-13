@@ -28,6 +28,10 @@ type SidebarProps = {
   onRequestClose?: () => void
 }
 
+type SidebarContextMenu =
+  | { kind: 'session'; id: string; x: number; y: number }
+  | { kind: 'project'; projectPath: string; title: string; x: number; y: number }
+
 export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   const t = useTranslation()
   const sessions = useSessionStore((s) => s.sessions)
@@ -55,7 +59,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
   const disconnectSession = useChatStore((s) => s.disconnectSession)
   const projectMemories = useProjectMemoryStore((s) => s.memories)
   const [searchQuery, setSearchQuery] = useState('')
-  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<SidebarContextMenu | null>(null)
   const [pendingDeleteSessionId, setPendingDeleteSessionId] = useState<string | null>(null)
   const [pendingBatchDeleteSessionIds, setPendingBatchDeleteSessionIds] = useState<string[] | null>(null)
   const [isBatchDeleting, setIsBatchDeleting] = useState(false)
@@ -108,10 +112,22 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
     [pendingBatchDeleteSessionIds, sessionsById],
   )
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, id: string) => {
+  const handleSessionContextMenu = useCallback((e: React.MouseEvent, id: string) => {
     e.preventDefault()
     if (isBatchMode) return
-    setContextMenu({ id, x: e.clientX, y: e.clientY })
+    setContextMenu({ kind: 'session', id, x: e.clientX, y: e.clientY })
+  }, [isBatchMode])
+
+  const handleProjectContextMenu = useCallback((e: React.MouseEvent, group: ProjectGroup) => {
+    if (isBatchMode || group.key === UNSCOPED_PROJECT_KEY) return
+    e.preventDefault()
+    setContextMenu({
+      kind: 'project',
+      projectPath: group.key,
+      title: group.title,
+      x: e.clientX,
+      y: e.clientY,
+    })
   }, [isBatchMode])
 
   const handleDelete = useCallback((id: string) => {
@@ -248,6 +264,17 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
       })
     }
   }, [addToast, closeMobileDrawer, t])
+
+  const copyProjectPath = useCallback(async (projectPath: string) => {
+    try {
+      await navigator.clipboard.writeText(projectPath)
+      addToast({ type: 'success', message: t('sidebar.projectPathCopied') })
+    } catch {
+      addToast({ type: 'error', message: t('sidebar.projectPathCopyFailed') })
+    } finally {
+      setContextMenu(null)
+    }
+  }, [addToast, t])
 
   useEffect(() => {
     const openProjectMemory = () => {
@@ -507,7 +534,10 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                 const isScopedProject = group.key !== UNSCOPED_PROJECT_KEY
                 return (
                   <div key={group.key} className="mb-2 pt-2">
-                    <div className="group/project flex items-center justify-between gap-2 px-1.5 pb-1 pt-2">
+                    <div
+                      className="group/project flex items-center justify-between gap-2 px-1.5 pb-1 pt-2"
+                      onContextMenu={(event) => handleProjectContextMenu(event, group)}
+                    >
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="material-symbols-outlined flex-shrink-0 text-[18px] text-[var(--color-text-tertiary)]">
                           folder
@@ -600,7 +630,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                                 useChatStore.getState().connectToSession(session.id)
                                 closeMobileDrawer()
                               }}
-                              onContextMenu={(e) => handleContextMenu(e, session.id)}
+                              onContextMenu={(e) => handleSessionContextMenu(e, session.id)}
                               className={`
                                 group w-full rounded-[10px] px-3 ${isMobile ? 'py-3' : 'py-2'} text-left text-sm transition-colors duration-200
                                 ${selectedSessionIds.has(session.id)
@@ -703,21 +733,53 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
           className="fixed z-50 min-w-[140px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] py-1"
           style={{ left: contextMenu.x, top: contextMenu.y, boxShadow: 'var(--shadow-dropdown)' }}
         >
-          <button
-            onClick={() => {
-              const session = sessions.find((s) => s.id === contextMenu.id)
-              handleStartRename(contextMenu.id, session?.title || '')
-            }}
-            className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
-          >
-            {t('common.rename')}
-          </button>
-          <button
-            onClick={() => handleDelete(contextMenu.id)}
-            className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-error)] transition-colors hover:bg-[var(--color-surface-hover)]"
-          >
-            {t('common.delete')}
-          </button>
+          {contextMenu.kind === 'session' ? (
+            <>
+              <button
+                onClick={() => {
+                  const session = sessions.find((s) => s.id === contextMenu.id)
+                  handleStartRename(contextMenu.id, session?.title || '')
+                }}
+                className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {t('common.rename')}
+              </button>
+              <button
+                onClick={() => handleDelete(contextMenu.id)}
+                className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-error)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {t('common.delete')}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  const projectPath = contextMenu.projectPath
+                  setContextMenu(null)
+                  void createSessionForProject(projectPath)
+                }}
+                className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {t('sidebar.projectNewSession', { project: contextMenu.title })}
+              </button>
+              <button
+                onClick={() => {
+                  setMemoryProject({ path: contextMenu.projectPath, title: contextMenu.title })
+                  setContextMenu(null)
+                }}
+                className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {t('sidebar.projectMemory')}
+              </button>
+              <button
+                onClick={() => void copyProjectPath(contextMenu.projectPath)}
+                className="w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {t('sidebar.copyProjectPath')}
+              </button>
+            </>
+          )}
         </div>
       )}
 

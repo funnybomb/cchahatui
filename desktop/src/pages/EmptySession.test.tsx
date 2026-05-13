@@ -93,6 +93,7 @@ import { useSessionStore } from '../stores/sessionStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useTabStore } from '../stores/tabStore'
 import { useUIStore } from '../stores/uiStore'
+import { useProjectMemoryStore } from '../stores/projectMemoryStore'
 import type { RepositoryContextResult } from '../api/sessions'
 
 function okRepositoryContext(overrides: Partial<RepositoryContextResult> = {}): RepositoryContextResult {
@@ -141,9 +142,11 @@ describe('EmptySession', () => {
   const initialTabState = useTabStore.getInitialState()
   const initialRuntimeState = useSessionRuntimeStore.getInitialState()
   const initialUiState = useUIStore.getInitialState()
+  const initialProjectMemoryState = useProjectMemoryStore.getInitialState()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.clear()
     mocks.isMobile = false
     mocks.isTauriRuntime = false
     useSettingsStore.setState({ locale: 'en', activeProviderName: null })
@@ -152,6 +155,7 @@ describe('EmptySession', () => {
     useTabStore.setState(initialTabState, true)
     useSessionRuntimeStore.setState(initialRuntimeState, true)
     useUIStore.setState(initialUiState, true)
+    useProjectMemoryStore.setState(initialProjectMemoryState, true)
 
     mocks.createSession.mockResolvedValue({ sessionId: 'draft-session' })
     mocks.getRepositoryContext.mockResolvedValue(okRepositoryContext())
@@ -177,11 +181,13 @@ describe('EmptySession', () => {
 
   afterEach(() => {
     cleanup()
+    window.localStorage.clear()
     useSessionStore.setState(initialSessionState, true)
     useChatStore.setState(initialChatState, true)
     useTabStore.setState(initialTabState, true)
     useSessionRuntimeStore.setState(initialRuntimeState, true)
     useUIStore.setState(initialUiState, true)
+    useProjectMemoryStore.setState(initialProjectMemoryState, true)
   })
 
   it('uses compact composer controls on phone-sized H5 browsers', async () => {
@@ -246,6 +252,38 @@ describe('EmptySession', () => {
     })
     expect(mocks.wsConnect).toHaveBeenCalledWith('draft-session')
     expect(useSessionRuntimeStore.getState().selections['draft-session']).toBeUndefined()
+  })
+
+  it('injects project memory into the first message for a selected project without changing visible text', async () => {
+    useProjectMemoryStore.getState().setMemory('/workspace/project', 'Use pnpm only.')
+
+    render(<EmptySession />)
+
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'draft question', selectionStart: 14 },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Pick project' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Run/i })).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+
+    await waitFor(() => {
+      expect(mocks.wsSend).toHaveBeenCalledWith('draft-session', expect.objectContaining({
+        type: 'user_message',
+        content: expect.stringContaining('<project-memory>'),
+      }))
+    })
+    expect(mocks.wsSend).toHaveBeenCalledWith('draft-session', expect.objectContaining({
+      content: expect.stringContaining('Use pnpm only.'),
+    }))
+    const messages = useChatStore.getState().sessions['draft-session']?.messages ?? []
+    expect(messages[messages.length - 1]).toMatchObject({
+      type: 'user_text',
+      content: 'draft question',
+    })
   })
 
   it('stores and replays a draft runtime only when the user explicitly selected one', async () => {

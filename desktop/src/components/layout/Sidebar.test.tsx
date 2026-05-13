@@ -52,6 +52,9 @@ vi.mock('../../i18n', () => ({
       'sidebar.projectMemoryCleared': 'Project memory cleared.',
       'sidebar.projectMemoryNoProject': 'Open a project session before editing project memory.',
       'sidebar.openProjectMemory': 'Edit memory for {project}',
+      'sidebar.copyProjectPath': 'Copy project path',
+      'sidebar.projectPathCopied': 'Project path copied.',
+      'sidebar.projectPathCopyFailed': 'Failed to copy project path.',
       'sidebar.sessionRunning': 'Session running',
       'sidebar.relative.now': 'now',
       'sidebar.relative.minutes': '{count}m',
@@ -465,6 +468,60 @@ describe('Sidebar', () => {
         message: 'Project memory saved.',
       })
     })
+  })
+
+  it('opens a project context menu with project actions', async () => {
+    createSession.mockResolvedValue('session-project-context')
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    useSessionStore.setState({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Project A Task',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath: '/workspace/project-a',
+          workDir: '/workspace/project-a',
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    fireEvent.contextMenu(screen.getByText('project-a'))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy project path' }))
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('/workspace/project-a')
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Project path copied.',
+      })
+    })
+
+    fireEvent.contextMenu(screen.getByText('project-a'))
+    const projectContextNewSession = screen
+      .getAllByRole('button', { name: 'New session in project-a' })
+      .find((button) => button.textContent === 'New session in project-a')
+    expect(projectContextNewSession).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(projectContextNewSession!)
+    })
+
+    await waitFor(() => {
+      expect(createSession).toHaveBeenCalledWith('/workspace/project-a')
+      expect(connectToSession).toHaveBeenCalledWith('session-project-context')
+    })
+
+    fireEvent.contextMenu(screen.getByText('project-a'))
+    fireEvent.click(screen.getByRole('button', { name: 'Project memory' }))
+    expect(await screen.findByRole('dialog', { name: 'Project memory' })).toBeInTheDocument()
   })
 
   it('shows missing directories, running status, and supports inline rename', async () => {
