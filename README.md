@@ -122,6 +122,7 @@ bun run verify
 
 | 类型 | 路径 |
 |------|------|
+| 当前本机项目目录 | `/Users/funnybomb/百度云同步盘/mac_syn/FangcloudV2/personal_space.localized/个人工作文件/projects/haha+tui` |
 | 应用数据 | `~/Library/Application Support/cchahatui/` |
 | 诊断日志 | `~/Library/Application Support/cchahatui/claude/cc-haha/diagnostics/` |
 | 项目配置 | 项目目录下的 `.claude/` 兼容目录 |
