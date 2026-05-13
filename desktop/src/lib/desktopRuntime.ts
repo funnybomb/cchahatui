@@ -83,12 +83,12 @@ export async function saveAndVerifyH5Connection(serverUrl: string, token: string
     throw new Error('Enter your H5 access token.')
   }
 
-  setBaseUrl(normalizedServerUrl)
-  setAuthToken(normalizedToken)
   rememberStoredH5ServerUrl(normalizedServerUrl)
 
   try {
     await waitForHealth(normalizedServerUrl)
+    setBaseUrl(normalizedServerUrl)
+    setAuthToken(normalizedToken)
     await verifyH5Access()
   } catch (error) {
     clearStoredH5Token()
@@ -155,12 +155,6 @@ async function initializeBrowserServerUrl(fallbackUrl: string) {
   for (const candidateUrl of fallbackCandidates) {
     const browserH5Runtime = requiresH5AuthForServerUrl(candidateUrl)
 
-    setBaseUrl(candidateUrl)
-    setAuthToken(browserH5Runtime ? token : null)
-    if (browserH5Runtime) {
-      rememberStoredH5ServerUrl(candidateUrl)
-    }
-
     try {
       await waitForHealth(candidateUrl)
     } catch (error) {
@@ -174,8 +168,12 @@ async function initializeBrowserServerUrl(fallbackUrl: string) {
 
     if (!browserH5Runtime) {
       await ensureBrowserApiAccessibleWithoutH5(candidateUrl)
+      setBaseUrl(candidateUrl)
+      setAuthToken(null)
       return candidateUrl
     }
+
+    rememberStoredH5ServerUrl(candidateUrl)
 
     if (!token) {
       clearStoredH5Token()
@@ -185,6 +183,9 @@ async function initializeBrowserServerUrl(fallbackUrl: string) {
         'missing-token',
       )
     }
+
+    setBaseUrl(candidateUrl)
+    setAuthToken(token)
 
     try {
       await verifyH5Access()

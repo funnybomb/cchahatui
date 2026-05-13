@@ -128,8 +128,8 @@ describe('desktopRuntime browser H5 bootstrap', () => {
       .mockResolvedValue(healthOkResponse()) as typeof fetch
 
     await expect(initializeDesktopServerUrl()).resolves.toBe('http://127.0.0.1:3456')
-    expect(clientMocks.setBaseUrl).toHaveBeenNthCalledWith(1, window.location.origin)
     expect(clientMocks.setBaseUrl).toHaveBeenLastCalledWith('http://127.0.0.1:3456')
+    expect(clientMocks.setBaseUrl).not.toHaveBeenCalledWith(window.location.origin)
     expect(clientMocks.setAuthToken).toHaveBeenLastCalledWith(null)
     expect(globalThis.fetch).toHaveBeenCalledWith(`${window.location.origin}/health`, {
       cache: 'no-store',
@@ -210,7 +210,7 @@ describe('desktopRuntime browser H5 bootstrap', () => {
       reason: 'missing-token',
     } satisfies Partial<H5ConnectionRequiredError>)
 
-    expect(clientMocks.setBaseUrl).toHaveBeenLastCalledWith('http://192.168.0.102:28670')
+    expect(clientMocks.setBaseUrl).not.toHaveBeenCalled()
     expect(clientMocks.setAuthToken).toHaveBeenLastCalledWith(null)
     expect(clientMocks.postVerify).not.toHaveBeenCalled()
     expect(window.localStorage.getItem(H5_SERVER_URL_STORAGE_KEY)).toBe('http://192.168.0.102:28670')

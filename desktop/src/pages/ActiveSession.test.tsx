@@ -73,6 +73,7 @@ import {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.useRealTimers()
   viewportMocks.isMobile = false
   useTabStore.setState({ tabs: [], activeTabId: null })
@@ -279,6 +280,95 @@ describe('ActiveSession task polling', () => {
     useCLITaskStore.setState(originalCliTaskState)
   })
 
+  it('refreshes and restarts member transcript polling when a member tab is active', () => {
+    const memberSessionId = 'team-member:security-reviewer@test-team'
+    const originalCliTaskState = useCLITaskStore.getState()
+    const fetchSessionTasks = vi.fn().mockResolvedValue(undefined)
+
+    useCLITaskStore.setState({
+      sessionId: null,
+      tasks: [],
+      fetchSessionTasks,
+    })
+
+    useTeamStore.setState({
+      teams: [],
+      activeTeam: {
+        name: 'test-team',
+        leadAgentId: 'team-lead@test-team',
+        leadSessionId: 'leader-session',
+        members: [
+          {
+            agentId: 'team-lead@test-team',
+            role: 'team-lead',
+            status: 'running',
+            sessionId: 'leader-session',
+          },
+          {
+            agentId: 'security-reviewer@test-team',
+            role: 'security-reviewer',
+            status: 'running',
+          },
+        ],
+      },
+      memberColors: new Map(),
+      error: null,
+    })
+
+    useTabStore.setState({
+      tabs: [{ sessionId: memberSessionId, title: 'security-reviewer', type: 'session', status: 'idle' }],
+      activeTabId: memberSessionId,
+    })
+
+    useChatStore.setState({
+      sessions: {
+        [memberSessionId]: {
+          messages: [],
+          chatState: 'thinking',
+          connectionState: 'connected',
+          streamingText: '',
+          streamingToolInput: '',
+          activeToolUseId: null,
+          activeToolName: null,
+          activeThinkingId: null,
+          pendingPermission: null,
+          pendingComputerUsePermission: null,
+          tokenUsage: { input_tokens: 0, output_tokens: 0 },
+          elapsedSeconds: 0,
+          statusVerb: '',
+          slashCommands: [],
+          agentTaskNotifications: {},
+          elapsedTimer: null,
+        },
+      },
+    })
+
+    const teamState = useTeamStore.getState()
+    const refreshMemberSession = vi
+      .spyOn(teamState, 'refreshMemberSession')
+      .mockResolvedValue(undefined)
+    const startMemberPolling = vi
+      .spyOn(teamState, 'startMemberPolling')
+      .mockImplementation(() => undefined)
+    const stopMemberPolling = vi
+      .spyOn(teamState, 'stopMemberPolling')
+      .mockImplementation(() => undefined)
+    const connectToSession = vi
+      .spyOn(useChatStore.getState(), 'connectToSession')
+      .mockImplementation(() => undefined)
+
+    const { unmount } = render(<ActiveSession />)
+
+    expect(refreshMemberSession).toHaveBeenCalledWith(memberSessionId)
+    expect(startMemberPolling).toHaveBeenCalledWith(memberSessionId)
+    expect(connectToSession).not.toHaveBeenCalled()
+    expect(fetchSessionTasks).not.toHaveBeenCalled()
+
+    unmount()
+    expect(stopMemberPolling).toHaveBeenCalled()
+    useCLITaskStore.setState(originalCliTaskState)
+  })
+
   it('renders the workspace panel to the right of chat and supports resizing', () => {
     const sessionId = 'workspace-session'
 
@@ -398,6 +488,11 @@ describe('ActiveSession task polling', () => {
     expect(screen.queryByTestId('workspace-panel')).not.toBeInTheDocument()
 
     const memberSessionId = 'team-member:security-reviewer@test-team'
+    const teamState = useTeamStore.getState()
+    vi.spyOn(teamState, 'refreshMemberSession').mockResolvedValue(undefined)
+    vi.spyOn(teamState, 'startMemberPolling').mockImplementation(() => undefined)
+    vi.spyOn(teamState, 'stopMemberPolling').mockImplementation(() => undefined)
+
     act(() => {
       useTeamStore.setState({
         teams: [],

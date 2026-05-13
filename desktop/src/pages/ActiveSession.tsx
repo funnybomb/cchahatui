@@ -215,6 +215,9 @@ export function ActiveSession() {
 
   const session = sessions.find((s) => s.id === activeTabId)
   const memberInfo = useTeamStore((s) => activeTabId ? s.getMemberBySessionId(activeTabId) : null)
+  const refreshMemberSession = useTeamStore((s) => s.refreshMemberSession)
+  const startMemberPolling = useTeamStore((s) => s.startMemberPolling)
+  const stopMemberPolling = useTeamStore((s) => s.stopMemberPolling)
   const activeTeam = useTeamStore((s) => s.activeTeam)
   const isMemberSession = !!memberInfo
   const showWorkspacePanel = useWorkspacePanelStore((state) =>
@@ -234,6 +237,23 @@ export function ActiveSession() {
       connectToSession(activeTabId)
     }
   }, [activeTabId, isMemberSession, connectToSession])
+
+  useEffect(() => {
+    if (!activeTabId || !isMemberSession) return
+
+    void refreshMemberSession(activeTabId)
+    startMemberPolling(activeTabId)
+
+    return () => {
+      stopMemberPolling()
+    }
+  }, [
+    activeTabId,
+    isMemberSession,
+    refreshMemberSession,
+    startMemberPolling,
+    stopMemberPolling,
+  ])
 
   useEffect(() => {
     if (!activeTabId || isMemberSession) return

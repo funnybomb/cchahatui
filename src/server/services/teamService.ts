@@ -77,6 +77,11 @@ type TeamFileRaw = {
   }>
 }
 
+type ResolvedTeamConfig = {
+  config: TeamFileRaw
+  dirName: string
+}
+
 // ─── Service ───────────────────────────────────────────────────────────────
 
 export class TeamService {
@@ -110,9 +115,9 @@ export class TeamService {
       if (!entry.isDirectory()) continue
 
       try {
-        const config = await this.loadTeamConfig(entry.name)
+        const { config, dirName } = await this.resolveTeamConfig(entry.name)
         // Include inbox-discovered members in the count
-        const inboxNames = await this.discoverInboxMembers(entry.name)
+        const inboxNames = await this.discoverInboxMembers(dirName)
         const configNames = new Set(config.members.map((m) => m.name))
         const extraCount = inboxNames.filter((n) => !configNames.has(n)).length
         const summary = this.toSummary(config)
@@ -130,7 +135,7 @@ export class TeamService {
   // ── Get team detail ─────────────────────────────────────────────────────
 
   async getTeam(name: string): Promise<TeamDetail> {
-    const config = await this.loadTeamConfig(name)
+    const { config, dirName } = await this.resolveTeamConfig(name)
 
     const members: TeamMember[] = config.members.map((m) => ({
       agentId: m.agentId,
@@ -146,13 +151,13 @@ export class TeamService {
     }))
 
     // Discover members from inboxes/ that aren't in config.json (race condition fix)
-    const inboxNames = await this.discoverInboxMembers(name)
+    const inboxNames = await this.discoverInboxMembers(dirName)
     const configNames = new Set(config.members.map((m) => m.name))
 
     for (const inboxName of inboxNames) {
       if (!configNames.has(inboxName)) {
         members.push({
-          agentId: `${inboxName}@${name}`,
+          agentId: `${inboxName}@${config.name}`,
           name: inboxName,
           agentType: 'general-purpose',
           status: 'running', // assume running since we can see their inbox
@@ -200,8 +205,8 @@ export class TeamService {
     teamName: string,
     agentId: string,
   ): Promise<TranscriptMessage[]> {
-    const config = await this.loadTeamConfig(teamName)
-    const memberName = await this.resolveMemberName(config, teamName, agentId)
+    const { config, dirName } = await this.resolveTeamConfig(teamName)
+    const memberName = await this.resolveMemberName(config, dirName, agentId)
     if (!memberName) {
       throw ApiError.notFound(
         `Team member not found: ${agentId} in team ${teamName}`,
@@ -241,10 +246,10 @@ export class TeamService {
       throw ApiError.badRequest('content (string) is required in request body')
     }
 
-    const config = await this.loadTeamConfig(teamName)
+    const { config, dirName } = await this.resolveTeamConfig(teamName)
     const recipientName = await this.resolveMemberName(
       config,
-      teamName,
+      dirName,
       agentId,
     )
 
@@ -261,39 +266,79 @@ export class TeamService {
         text,
         timestamp: new Date().toISOString(),
       },
-      teamName,
+      dirName,
     )
   }
 
   // ── Delete team ─────────────────────────────────────────────────────────
 
   async deleteTeam(name: string): Promise<void> {
-    const config = await this.loadTeamConfig(name)
+    const { config, dirName } = await this.resolveTeamConfig(name)
 
     const hasActive = config.members.some(
       (m) => m.isActive === undefined || m.isActive === true,
     )
     if (hasActive) {
       throw ApiError.conflict(
-        `Cannot delete team "${name}": has active members`,
+        `Cannot delete team "${config.name}": has active members`,
       )
     }
 
-    const teamDir = path.join(this.getTeamsDir(), name)
+    const teamDir = path.join(this.getTeamsDir(), dirName)
     await fs.rm(teamDir, { recursive: true, force: true })
   }
 
   // ── Internal helpers ────────────────────────────────────────────────────
 
-  private async loadTeamConfig(name: string): Promise<TeamFileRaw> {
-    const configPath = path.join(this.getTeamsDir(), name, 'config.json')
+  private async resolveTeamConfig(name: string): Promise<ResolvedTeamConfig> {
+    const candidates = [
+      name,
+      this.sanitizeTeamName(name),
+    ].filter((candidate, index, all): candidate is string => (
+      Boolean(candidate) && all.indexOf(candidate) === index
+    ))
+
+    for (const dirName of candidates) {
+      const config = await this.tryReadTeamConfig(dirName)
+      if (!config) continue
+      if (
+        dirName === name ||
+        config.name === name ||
+        this.sanitizeTeamName(config.name) === this.sanitizeTeamName(name)
+      ) {
+        return { config, dirName }
+      }
+    }
+
+    try {
+      const entries = await fs.readdir(this.getTeamsDir(), { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory() || candidates.includes(entry.name)) continue
+        const config = await this.tryReadTeamConfig(entry.name)
+        if (config?.name === name) {
+          return { config, dirName: entry.name }
+        }
+      }
+    } catch {
+      // Fall through to the public not found error below.
+    }
+
+    throw ApiError.notFound(`Team not found: ${name}`)
+  }
+
+  private async tryReadTeamConfig(dirName: string): Promise<TeamFileRaw | null> {
+    const configPath = path.join(this.getTeamsDir(), dirName, 'config.json')
 
     try {
       const raw = await fs.readFile(configPath, 'utf-8')
       return JSON.parse(raw) as TeamFileRaw
     } catch {
-      throw ApiError.notFound(`Team not found: ${name}`)
+      return null
     }
+  }
+
+  private sanitizeTeamName(name: string): string {
+    return name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()
   }
 
   /**
@@ -301,8 +346,8 @@ export class TeamService {
    * Each file `{name}.json` in inboxes/ represents a team member.
    * Excludes the team-lead inbox since the leader is already in config.
    */
-  private async discoverInboxMembers(teamName: string): Promise<string[]> {
-    const inboxDir = path.join(this.getTeamsDir(), teamName, 'inboxes')
+  private async discoverInboxMembers(teamDirName: string): Promise<string[]> {
+    const inboxDir = path.join(this.getTeamsDir(), teamDirName, 'inboxes')
 
     try {
       const files = await fs.readdir(inboxDir)
@@ -339,7 +384,7 @@ export class TeamService {
 
   private async resolveMemberName(
     config: TeamFileRaw,
-    teamName: string,
+    teamDirName: string,
     agentId: string,
   ): Promise<string | null> {
     const configMember = config.members.find((m) => m.agentId === agentId)
@@ -348,7 +393,7 @@ export class TeamService {
     }
 
     const parsedName = agentId.includes('@') ? agentId.split('@')[0]! : agentId
-    const inboxNames = await this.discoverInboxMembers(teamName)
+    const inboxNames = await this.discoverInboxMembers(teamDirName)
     if (inboxNames.includes(parsedName)) {
       return parsedName
     }

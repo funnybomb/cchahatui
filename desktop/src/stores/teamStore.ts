@@ -12,6 +12,14 @@ const MEMBER_TRANSCRIPT_MATCH_WINDOW_MS = 120_000
 /** Generate a synthetic sessionId for team member tabs */
 const memberSessionId = (agentId: string) => `team-member:${agentId}`
 
+function normalizeTeamName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+}
+
+function isSameTeamName(a: string, b: string): boolean {
+  return a === b || normalizeTeamName(a) === normalizeTeamName(b)
+}
+
 /** Module-level timer for polling member transcript */
 let memberPollTimer: ReturnType<typeof setInterval> | null = null
 let polledMemberSessionId: string | null = null
@@ -294,7 +302,7 @@ export const useTeamStore = create<TeamStore>((set, get) => ({
 
   handleTeamUpdate: (teamName: string, members: TeamMemberStatus[]) => {
     const team = get().activeTeam
-    if (team && team.name === teamName) {
+    if (team && isSameTeamName(team.name, teamName)) {
       if (members.length === 0) return
 
       if (members.length > team.members.length) {
@@ -336,9 +344,28 @@ export const useTeamStore = create<TeamStore>((set, get) => ({
 
   handleTeamDeleted: (teamName: string) => {
     get().stopMemberPolling()
+    const activeTeam = get().activeTeam
+    if (activeTeam && isSameTeamName(activeTeam.name, teamName)) {
+      const memberSessionIds = new Set(activeTeam.members.map((member) => memberSessionId(member.agentId)))
+      const activeTabId = useTabStore.getState().activeTabId
+      const shouldReturnToLeader =
+        !!activeTabId &&
+        memberSessionIds.has(activeTabId) &&
+        !!activeTeam.leadSessionId &&
+        useTabStore.getState().tabs.some((tab) => tab.sessionId === activeTeam.leadSessionId)
+
+      for (const sessionId of memberSessionIds) {
+        useTabStore.getState().closeTab(sessionId)
+      }
+
+      if (shouldReturnToLeader && activeTeam.leadSessionId) {
+        useTabStore.getState().setActiveTab(activeTeam.leadSessionId)
+      }
+    }
+
     set((s) => ({
-      teams: s.teams.filter((t) => t.name !== teamName),
-      activeTeam: s.activeTeam?.name === teamName ? null : s.activeTeam,
+      teams: s.teams.filter((t) => !isSameTeamName(t.name, teamName)),
+      activeTeam: s.activeTeam && isSameTeamName(s.activeTeam.name, teamName) ? null : s.activeTeam,
     }))
   },
 }))

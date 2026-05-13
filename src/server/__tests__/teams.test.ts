@@ -264,6 +264,46 @@ describe('TeamService', () => {
     expect(service.getTeam('nonexistent')).rejects.toThrow('Team not found')
   })
 
+  it('should resolve display team names stored in sanitized directories', async () => {
+    const config = makeTeamConfig({
+      name: 'My Team',
+      leadSessionId: 'lead-session-display',
+    })
+    for (const member of config.members) {
+      ;(member as Record<string, unknown>).isActive = false
+    }
+    await writeTeamConfig('my-team', config)
+    await writeTranscriptFile('-tmp-project', 'session-lead-001', [
+      {
+        type: 'user',
+        uuid: 'display-u1',
+        message: { role: 'user', content: 'Hello display team' },
+        timestamp: '2026-01-01T00:01:00.000Z',
+      },
+    ])
+
+    const listed = await service.listTeams()
+    expect(listed.map((team) => team.name)).toEqual(['My Team'])
+
+    const detail = await service.getTeam('My Team')
+    expect(detail.name).toBe('My Team')
+    expect(detail.members).toHaveLength(2)
+
+    const messages = await service.getMemberTranscript('My Team', 'agent-lead')
+    expect(messages.map((message) => message.id)).toEqual(['display-u1'])
+
+    await service.sendMemberMessage('My Team', 'agent-worker', 'Use the existing sanitized dir')
+    const rawInbox = await fs.readFile(
+      path.join(tmpDir, 'teams', 'my-team', 'inboxes', 'Worker-Agent.json'),
+      'utf-8',
+    )
+    const inbox = JSON.parse(rawInbox) as Array<{ text: string }>
+    expect(inbox.at(-1)?.text).toBe('Use the existing sanitized dir')
+
+    await service.deleteTeam('My Team')
+    await expect(fs.access(path.join(tmpDir, 'teams', 'my-team'))).rejects.toThrow()
+  })
+
   // --------------------------------------------------------------------------
   // getMemberTranscript
   // --------------------------------------------------------------------------
