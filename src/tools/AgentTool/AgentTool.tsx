@@ -27,7 +27,7 @@ import { createUserMessage, extractTextContent, isSyntheticMessage, normalizeMes
 import { getAgentModel } from '../../utils/model/agent.js';
 import { permissionModeSchema } from '../../utils/permissions/PermissionMode.js';
 import type { PermissionResult } from '../../utils/permissions/PermissionResult.js';
-import { filterDeniedAgents, getDenyRuleForAgent } from '../../utils/permissions/permissions.js';
+import { filterDeniedAgents } from '../../utils/permissions/permissions.js';
 import { enqueueSdkEvent } from '../../utils/sdkEventQueue.js';
 import { writeAgentMetadata } from '../../utils/sessionStorage.js';
 import { sleep } from '../../utils/sleep.js';
@@ -52,6 +52,7 @@ import { buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEna
 import type { AgentDefinition } from './loadAgentsDir.js';
 import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from './loadAgentsDir.js';
 import { getPrompt } from './prompt.js';
+import { resolveAgentSelection } from './resolveAgentSelection.js';
 import { runAgent } from './runAgent.js';
 import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from './UI.js';
 
@@ -283,9 +284,23 @@ export const AgentTool = buildTool({
     // Spawn is triggered when team_name is set (from param or context) and name is provided
     if (teamName && name) {
       // Set agent definition color for grouped UI display before spawning
-      const agentDef = subagent_type ? toolUseContext.options.agentDefinitions.activeAgents.find(a => a.agentType === subagent_type) : undefined;
+      let resolvedTeammateAgentType = subagent_type;
+      let agentDef: AgentDefinition | undefined;
+      if (subagent_type) {
+        const resolvedSelection = resolveAgentSelection({
+          requestedType: subagent_type,
+          allAgents: toolUseContext.options.agentDefinitions.activeAgents,
+          allowedAgentTypes: toolUseContext.options.agentDefinitions.allowedAgentTypes,
+          toolPermissionContext: appState.toolPermissionContext,
+        });
+        agentDef = resolvedSelection.selectedAgent;
+        resolvedTeammateAgentType = agentDef.agentType;
+        if (resolvedSelection.fallbackFrom) {
+          logForDebugging(`Agent type '${resolvedSelection.fallbackFrom}' not found. Falling back to '${agentDef.agentType}'. Available agents: ${resolvedSelection.availableAgents.map(a => a.agentType).join(', ')}`);
+        }
+      }
       if (agentDef?.color) {
-        setAgentColor(subagent_type!, agentDef.color);
+        setAgentColor(agentDef.agentType, agentDef.color);
       }
       const result = await spawnTeammate({
         name,
@@ -295,7 +310,7 @@ export const AgentTool = buildTool({
         use_splitpane: true,
         plan_mode_required: spawnMode === 'plan',
         model: model ?? agentDef?.model,
-        agent_type: subagent_type,
+        agent_type: resolvedTeammateAgentType,
         invokingRequestId: assistantMessage?.requestId
       }, toolUseContext);
 
@@ -334,25 +349,20 @@ export const AgentTool = buildTool({
       }
       selectedAgent = FORK_AGENT;
     } else {
-      // Filter agents to exclude those denied via Agent(AgentName) syntax
       const allAgents = toolUseContext.options.agentDefinitions.activeAgents;
       const {
         allowedAgentTypes
       } = toolUseContext.options.agentDefinitions;
-      const agents = filterDeniedAgents(
-      // When allowedAgentTypes is set (from Agent(x,y) tool spec), restrict to those types
-      allowedAgentTypes ? allAgents.filter(a => allowedAgentTypes.includes(a.agentType)) : allAgents, appState.toolPermissionContext, AGENT_TOOL_NAME);
-      const found = agents.find(agent => agent.agentType === effectiveType);
-      if (!found) {
-        // Check if the agent exists but is denied by permission rules
-        const agentExistsButDenied = allAgents.find(agent => agent.agentType === effectiveType);
-        if (agentExistsButDenied) {
-          const denyRule = getDenyRuleForAgent(appState.toolPermissionContext, AGENT_TOOL_NAME, effectiveType);
-          throw new Error(`Agent type '${effectiveType}' has been denied by permission rule '${AGENT_TOOL_NAME}(${effectiveType})' from ${denyRule?.source ?? 'settings'}.`);
-        }
-        throw new Error(`Agent type '${effectiveType}' not found. Available agents: ${agents.map(a => a.agentType).join(', ')}`);
+      const resolvedSelection = resolveAgentSelection({
+        requestedType: effectiveType,
+        allAgents,
+        allowedAgentTypes,
+        toolPermissionContext: appState.toolPermissionContext,
+      });
+      selectedAgent = resolvedSelection.selectedAgent;
+      if (resolvedSelection.fallbackFrom) {
+        logForDebugging(`Agent type '${resolvedSelection.fallbackFrom}' not found. Falling back to '${selectedAgent.agentType}'. Available agents: ${resolvedSelection.availableAgents.map(a => a.agentType).join(', ')}`);
       }
-      selectedAgent = found;
     }
 
     // Same lifecycle constraint as the run_in_background guard above, but for
