@@ -7,6 +7,7 @@ import { useTranslation } from '../../i18n'
 import { useMobileViewport } from '../../hooks/useMobileViewport'
 import { MobileBottomSheet } from './MobileBottomSheet'
 import { useSessionStore } from '../../stores/sessionStore'
+import { isTauriRuntime } from '../../lib/desktopRuntime'
 
 type Props = {
   value: string
@@ -22,10 +23,6 @@ let cachedProjects: RecentProject[] | null = null
 let cacheTimestamp = 0
 const CACHE_TTL = 30_000 // 30s
 const DESKTOP_WORKTREE_MARKER = '/.claude/worktrees/'
-
-function isTauriRuntime() {
-  return typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
-}
 
 function projectNameFromPath(filePath: string) {
   const displayRoot = filePath.includes(DESKTOP_WORKTREE_MARKER)
@@ -131,31 +128,37 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
       .catch(() => {})
   }
 
-  const handleChooseFolder = async () => {
+  const selectNativeFolder = async (): Promise<string | null> => {
     if (isTauriRuntime()) {
-      // Desktop: native OS folder dialog
-      setIsOpen(false)
-      try {
-        const { open } = await import('@tauri-apps/plugin-dialog')
-        const selected = await open({
-          directory: true,
-          multiple: false,
-          title: t('dirPicker.chooseProjectFolder'),
-        })
-        if (typeof selected === 'string' && selected) {
-          cachedProjects = null
-          await projectsApi.addProject(selected)
-            .then(() => fetchSessions())
-            .catch(() => {})
-          onChange(selected)
-        }
-      } catch (err) {
-        console.error('[DirectoryPicker] Failed to open folder dialog:', err)
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: t('dirPicker.chooseProjectFolder'),
+      })
+      return typeof selected === 'string' && selected ? selected : null
+    }
+
+    const selected = await filesystemApi.chooseFolder(t('dirPicker.chooseProjectFolder'))
+    return selected.path
+  }
+
+  const handleChooseFolder = async () => {
+    setIsOpen(false)
+    setLoading(true)
+    try {
+      const selected = await selectNativeFolder()
+      if (selected) {
+        handleSelect(selected)
       }
-    } else {
-      // Web browser: directory tree via backend API
+    } catch (err) {
+      console.error('[DirectoryPicker] Failed to open folder dialog:', err)
+      // H5 or non-local browser fallback. Local desktop/web should use the native picker.
+      setIsOpen(true)
       setMode('browse')
-      loadBrowseDir(value || undefined)
+      await loadBrowseDir(value || undefined)
+    } finally {
+      setLoading(false)
     }
   }
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@testing-library/jest-dom'
 
 vi.mock('../../api/sessions', () => ({
@@ -11,14 +11,37 @@ vi.mock('../../api/sessions', () => ({
 vi.mock('../../api/filesystem', () => ({
   filesystemApi: {
     browse: vi.fn(),
+    chooseFolder: vi.fn(),
   },
+}))
+
+vi.mock('../../api/projects', () => ({
+  projectsApi: {
+    addProject: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+
+const desktopRuntimeMock = vi.hoisted(() => ({
+  isTauriRuntime: vi.fn(() => false),
+}))
+const dialogOpenMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../../lib/desktopRuntime', () => desktopRuntimeMock)
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  open: dialogOpenMock,
 }))
 
 import { DirectoryPicker } from './DirectoryPicker'
 import { sessionsApi } from '../../api/sessions'
 import { filesystemApi } from '../../api/filesystem'
+import { projectsApi } from '../../api/projects'
 
 describe('DirectoryPicker', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    desktopRuntimeMock.isTauriRuntime.mockReturnValue(false)
+  })
+
   it('uses the source repository name as the fallback label for desktop worktree paths', () => {
     render(
       <DirectoryPicker
@@ -111,6 +134,7 @@ describe('DirectoryPicker', () => {
 
   it('renders browse entries without nesting interactive buttons', async () => {
     vi.mocked(sessionsApi.getRecentProjects).mockResolvedValue({ projects: [] })
+    vi.mocked(filesystemApi.chooseFolder).mockRejectedValue(new Error('native picker unavailable'))
     vi.mocked(filesystemApi.browse).mockResolvedValue({
       currentPath: '/workspace',
       parentPath: '/Users/nanmi',
@@ -127,5 +151,44 @@ describe('DirectoryPicker', () => {
     expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('validateDOMNesting'))
 
     errorSpy.mockRestore()
+  })
+
+  it('uses the local native folder picker for other projects in browser mode', async () => {
+    vi.mocked(sessionsApi.getRecentProjects).mockResolvedValue({ projects: [] })
+    vi.mocked(filesystemApi.chooseFolder).mockResolvedValue({ path: '/workspace/native-project' })
+    const onChange = vi.fn()
+
+    render(<DirectoryPicker value="" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /选择项目|Select a project/ }))
+    fireEvent.click(await screen.findByText(/选择其他文件夹|Choose a different folder/))
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith('/workspace/native-project')
+    })
+    expect(filesystemApi.browse).not.toHaveBeenCalled()
+    expect(projectsApi.addProject).toHaveBeenCalledWith('/workspace/native-project')
+  })
+
+  it('uses the Tauri native folder dialog inside the desktop app', async () => {
+    desktopRuntimeMock.isTauriRuntime.mockReturnValue(true)
+    dialogOpenMock.mockResolvedValue('/workspace/tauri-project')
+    vi.mocked(sessionsApi.getRecentProjects).mockResolvedValue({ projects: [] })
+    const onChange = vi.fn()
+
+    render(<DirectoryPicker value="" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /选择项目|Select a project/ }))
+    fireEvent.click(await screen.findByText(/选择其他文件夹|Choose a different folder/))
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith('/workspace/tauri-project')
+    })
+    expect(dialogOpenMock).toHaveBeenCalledWith({
+      directory: true,
+      multiple: false,
+      title: expect.any(String),
+    })
+    expect(filesystemApi.chooseFolder).not.toHaveBeenCalled()
   })
 })

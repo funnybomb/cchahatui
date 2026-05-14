@@ -6,6 +6,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
+import { execFileNoThrow } from '../../utils/execFileNoThrow.js'
 
 const IMAGE_MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -17,6 +18,25 @@ const IMAGE_MIME_TYPES: Record<string, string> = {
   '.bmp': 'image/bmp',
   '.ico': 'image/x-icon',
   '.avif': 'image/avif',
+}
+
+type NativeFolderChooser = (title: string) => Promise<string | null>
+type NativeFolderDialogRuntime = {
+  platform?: NodeJS.Platform
+  execFile?: typeof execFileNoThrow
+}
+
+let nativeFolderChooser: NativeFolderChooser = chooseFolderWithSystemDialog
+let nativeFolderDialogPlatform: NodeJS.Platform = process.platform
+let nativeFolderDialogExecFile = execFileNoThrow
+
+export function setNativeFolderChooserForTests(chooser: NativeFolderChooser | null) {
+  nativeFolderChooser = chooser ?? chooseFolderWithSystemDialog
+}
+
+export function setNativeFolderDialogRuntimeForTests(runtime: NativeFolderDialogRuntime | null) {
+  nativeFolderDialogPlatform = runtime?.platform ?? process.platform
+  nativeFolderDialogExecFile = runtime?.execFile ?? execFileNoThrow
 }
 
 function isWithinRoot(targetPath: string, rootPath: string): boolean {
@@ -46,9 +66,13 @@ function isAllowedFilesystemPath(targetPath: string): boolean {
   return false
 }
 
-export async function handleFilesystemRoute(pathname: string, url: URL): Promise<Response> {
+export async function handleFilesystemRoute(pathname: string, url: URL, req?: Request): Promise<Response> {
   if (pathname === '/api/filesystem/browse') {
     return handleBrowse(url)
+  }
+
+  if (pathname === '/api/filesystem/choose-folder') {
+    return handleChooseFolder(url, req)
   }
 
   if (pathname === '/api/filesystem/file') {
@@ -56,6 +80,112 @@ export async function handleFilesystemRoute(pathname: string, url: URL): Promise
   }
 
   return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
+}
+
+async function handleChooseFolder(url: URL, req?: Request): Promise<Response> {
+  if ((req?.method ?? 'GET') !== 'POST') {
+    return json({ error: 'Method not allowed' }, 405)
+  }
+
+  if (!isLoopbackHost(url.hostname)) {
+    return json({ error: 'Native folder selection is only available from localhost' }, 403)
+  }
+
+  try {
+    const title = url.searchParams.get('title') || 'Choose project folder'
+    const selectedPath = await nativeFolderChooser(title)
+    return json({ path: selectedPath })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return json({ error: message || 'Native folder selection failed' }, 500)
+  }
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '[::1]'
+}
+
+async function chooseFolderWithSystemDialog(title: string): Promise<string | null> {
+  if (nativeFolderDialogPlatform === 'darwin') {
+    return chooseFolderWithAppleScript(title)
+  }
+
+  if (nativeFolderDialogPlatform === 'win32') {
+    return chooseFolderWithPowerShell(title)
+  }
+
+  return chooseFolderWithZenity(title)
+}
+
+async function chooseFolderWithAppleScript(title: string): Promise<string | null> {
+  const result = await nativeFolderDialogExecFile(
+    'osascript',
+    ['-e', `POSIX path of (choose folder with prompt ${quoteAppleScriptString(title)})`],
+    { useCwd: false },
+  )
+
+  if (result.code !== 0) {
+    if (isUserCancelled(result.stderr) || isUserCancelled(result.error)) return null
+    throw new Error(result.stderr || result.error || 'Finder folder picker failed')
+  }
+
+  return normalizeSelectedFolderPath(result.stdout)
+}
+
+async function chooseFolderWithPowerShell(title: string): Promise<string | null> {
+  const script = [
+    'Add-Type -AssemblyName System.Windows.Forms',
+    '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',
+    `$dialog.Description = ${quotePowerShellString(title)}`,
+    'if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $dialog.SelectedPath }',
+  ].join('; ')
+  const result = await nativeFolderDialogExecFile(
+    'powershell',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    { useCwd: false },
+  )
+
+  if (result.code !== 0) {
+    if (isUserCancelled(result.stderr) || isUserCancelled(result.error)) return null
+    throw new Error(result.stderr || result.error || 'Windows folder picker failed')
+  }
+
+  return normalizeSelectedFolderPath(result.stdout)
+}
+
+async function chooseFolderWithZenity(title: string): Promise<string | null> {
+  const result = await nativeFolderDialogExecFile(
+    'zenity',
+    ['--file-selection', '--directory', '--title', title],
+    { useCwd: false },
+  )
+
+  if (result.code !== 0) {
+    if (isUserCancelled(result.stderr) || isUserCancelled(result.error)) return null
+    throw new Error(result.stderr || result.error || 'Native folder picker is unavailable')
+  }
+
+  return normalizeSelectedFolderPath(result.stdout)
+}
+
+function normalizeSelectedFolderPath(stdout: string): string | null {
+  const selectedPath = stdout.trim()
+  return selectedPath ? path.resolve(selectedPath) : null
+}
+
+function isUserCancelled(message: string | undefined): boolean {
+  return Boolean(message && /cancel|canceled|cancelled|user cancelled|用户取消/i.test(message))
+}
+
+function quoteAppleScriptString(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+function quotePowerShellString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`
 }
 
 async function handleServeFile(url: URL): Promise<Response> {

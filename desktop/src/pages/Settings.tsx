@@ -1368,6 +1368,8 @@ function PermissionSettings() {
 
 function GeneralSettings() {
   const {
+    currentModel,
+    activeProviderName,
     effortLevel,
     setEffort,
     thinkingEnabled,
@@ -1455,6 +1457,33 @@ function GeneralSettings() {
     high: t('settings.general.effort.high'),
     max: t('settings.general.effort.max'),
   }
+
+  const effortDescription = useMemo(() => {
+    const modelLabel =
+      currentModel?.name ||
+      currentModel?.id ||
+      activeProviderName ||
+      'DeepSeek'
+    const identity = [
+      currentModel?.id,
+      currentModel?.name,
+      activeProviderName,
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    if (!identity || identity.includes('deepseek')) {
+      return t('settings.general.effortDescription.deepseek')
+    }
+
+    if (identity.includes('claude') || identity.includes('anthropic') || identity.includes('cc-tui')) {
+      return t('settings.general.effortDescription.claude', { model: modelLabel })
+    }
+
+    if (identity.includes('openai') || /\bgpt[-_\s]?|^o[0-9]/.test(identity)) {
+      return t('settings.general.effortDescription.openai', { model: modelLabel })
+    }
+
+    return t('settings.general.effortDescription.generic', { model: modelLabel })
+  }, [activeProviderName, currentModel, t])
 
   const LANGUAGES: Array<{ value: Locale; label: string }> = [
     { value: 'en', label: 'English' },
@@ -1671,7 +1700,7 @@ function GeneralSettings() {
 
       {/* Effort Level */}
       <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">{t('settings.general.effortTitle')}</h2>
-      <p className="text-sm text-[var(--color-text-tertiary)] mb-3">{t('settings.general.effortDescription')}</p>
+      <p className="text-sm text-[var(--color-text-tertiary)] mb-3">{effortDescription}</p>
       <div className="flex gap-2">
         {(['low', 'medium', 'high', 'max'] as EffortLevel[]).map((level) => (
           <button

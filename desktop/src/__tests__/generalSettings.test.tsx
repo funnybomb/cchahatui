@@ -138,6 +138,13 @@ describe('Settings > General tab', () => {
 
     useSettingsStore.setState({
       locale: 'en',
+      currentModel: {
+        id: 'deepseek-v4-pro',
+        name: 'deepseek-v4-pro',
+        description: 'DeepSeek',
+        context: '128k',
+      },
+      activeProviderName: 'DeepSeek',
       thinkingEnabled: true,
       skipWebFetchPreflight: true,
       desktopNotificationsEnabled: true,
@@ -276,6 +283,65 @@ describe('Settings > General tab', () => {
     fireEvent.click(screen.getByRole('button', { name: '中文 (Chinese)' }))
 
     expect(useSettingsStore.getState().setResponseLanguage).toHaveBeenCalledWith('chinese')
+  })
+
+  it('defaults the effort guidance to DeepSeek semantics', () => {
+    render(<Settings />)
+
+    fireEvent.click(screen.getByText('General'))
+
+    expect(screen.getByText(/DeepSeek supports thinking effort/)).toBeInTheDocument()
+    expect(screen.getByText(/low and medium are compatibility-mapped to high/)).toBeInTheDocument()
+  })
+
+  it('updates effort guidance for non-DeepSeek models', () => {
+    useSettingsStore.setState({
+      currentModel: {
+        id: 'gpt-5.2',
+        name: 'GPT-5.2',
+        description: 'OpenAI model',
+        context: '400k',
+      },
+      activeProviderName: 'OpenAI',
+    })
+
+    render(<Settings />)
+
+    fireEvent.click(screen.getByText('General'))
+
+    expect(screen.getByText(/Current model GPT-5\.2 uses low\/medium\/high-style reasoning effort/)).toBeInTheDocument()
+    expect(screen.queryByText(/DeepSeek supports thinking effort/)).not.toBeInTheDocument()
+  })
+
+  it('updates effort guidance for Claude-compatible providers', () => {
+    useSettingsStore.setState({
+      currentModel: {
+        id: 'claude-sonnet-4-5',
+        name: 'Claude Sonnet 4.5',
+        description: 'Anthropic model',
+        context: '200k',
+      },
+      activeProviderName: 'Anthropic',
+    })
+
+    render(<Settings />)
+
+    fireEvent.click(screen.getByText('General'))
+
+    expect(screen.getByText(/Current model Claude Sonnet 4\.5 uses low\/medium\/high\/max as an effort preference/)).toBeInTheDocument()
+  })
+
+  it('uses generic effort guidance for other providers and falls back to provider name', () => {
+    useSettingsStore.setState({
+      currentModel: null,
+      activeProviderName: 'Local Runtime',
+    })
+
+    render(<Settings />)
+
+    fireEvent.click(screen.getByText('General'))
+
+    expect(screen.getByText(/Current model Local Runtime receives effort according to provider capability/)).toBeInTheDocument()
   })
 
   it('lets the user disable desktop system notifications', () => {

@@ -112,7 +112,7 @@ export async function handleApiRequest(req: Request, url: URL): Promise<Response
       return handleProjectsApi(req, url, segments)
 
     case 'filesystem':
-      return handleFilesystemRoute(url.pathname, url)
+      return handleFilesystemRoute(url.pathname, url, req)
 
     default:
       return Response.json(

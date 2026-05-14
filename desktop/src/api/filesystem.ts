@@ -27,4 +27,15 @@ export const filesystemApi = {
     if (cwd) q.set('path', cwd)
     return api.get<BrowseResult>(`/api/filesystem/browse?${q}`)
   },
+
+  chooseFolder(title?: string) {
+    const q = new URLSearchParams()
+    if (title) q.set('title', title)
+    const qs = q.toString()
+    return api.post<{ path: string | null }>(
+      `/api/filesystem/choose-folder${qs ? `?${qs}` : ''}`,
+      {},
+      { timeout: 10 * 60 * 1000 },
+    )
+  },
 }
