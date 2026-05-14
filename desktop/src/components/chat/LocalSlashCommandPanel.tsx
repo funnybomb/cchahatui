@@ -15,6 +15,7 @@ import { useSkillStore } from '../../stores/skillStore'
 import type { McpServerRecord } from '../../types/mcp'
 import type { SkillMeta } from '../../types/skill'
 import type { SlashCommandOption } from './composerUtils'
+import { getProjectDisplayName } from '../../lib/projectDisplay'
 
 export type LocalSlashCommandName = 'mcp' | 'skills' | 'help' | 'status' | 'cost' | 'context'
 
@@ -59,7 +60,7 @@ function scopeLabel(scope: string, t: ReturnType<typeof useTranslation>) {
 
 function projectBadge(path?: string, t?: ReturnType<typeof useTranslation>) {
   if (!path || !t) return null
-  const label = path.replace(/\/$/, '').split('/').pop() || path
+  const label = getProjectDisplayName(path, path)
   return t('slash.mcp.projectBadge', { name: label })
 }
 

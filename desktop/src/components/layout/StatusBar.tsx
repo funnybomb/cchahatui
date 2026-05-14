@@ -2,6 +2,7 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useSessionRuntimeStore } from '../../stores/sessionRuntimeStore'
 import { useTabStore } from '../../stores/tabStore'
+import { getProjectDisplayName } from '../../lib/projectDisplay'
 
 export function StatusBar() {
   const { currentModel } = useSettingsStore()
@@ -11,9 +12,7 @@ export function StatusBar() {
   )
   const projectPath = useSessionStore((s) => s.sessions.find((session) => session.id === activeTabId)?.projectPath)
 
-  const projectName = projectPath
-    ? projectPath.split('-').filter(Boolean).pop() || ''
-    : ''
+  const projectName = getProjectDisplayName(projectPath)
   const modelLabel = runtimeSelection?.modelId ?? currentModel?.name ?? null
 
   return (

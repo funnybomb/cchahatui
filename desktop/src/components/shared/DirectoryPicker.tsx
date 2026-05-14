@@ -8,6 +8,7 @@ import { useMobileViewport } from '../../hooks/useMobileViewport'
 import { MobileBottomSheet } from './MobileBottomSheet'
 import { useSessionStore } from '../../stores/sessionStore'
 import { isTauriRuntime } from '../../lib/desktopRuntime'
+import { getProjectDisplayName } from '../../lib/projectDisplay'
 
 type Props = {
   value: string
@@ -22,15 +23,6 @@ type DirEntry = { name: string; path: string; isDirectory: boolean }
 let cachedProjects: RecentProject[] | null = null
 let cacheTimestamp = 0
 const CACHE_TTL = 30_000 // 30s
-const DESKTOP_WORKTREE_MARKER = '/.claude/worktrees/'
-
-function projectNameFromPath(filePath: string) {
-  const displayRoot = filePath.includes(DESKTOP_WORKTREE_MARKER)
-    ? filePath.slice(0, filePath.indexOf(DESKTOP_WORKTREE_MARKER))
-    : filePath
-  return displayRoot.split('/').filter(Boolean).pop() || filePath
-}
-
 export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProject = false }: Props) {
   const t = useTranslation()
   const fetchSessions = useSessionStore((s) => s.fetchSessions)
@@ -165,7 +157,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
   // Find selected project info
   const selectedProject = projects.find((p) => p.realPath === value)
   const isWorkbar = variant === 'workbar'
-  const selectedLabel = selectedProject?.repoName || selectedProject?.projectName || projectNameFromPath(value)
+  const selectedLabel = selectedProject?.repoName || selectedProject?.projectName || getProjectDisplayName(value)
   const showGitIcon = selectedProject?.isGit || isGitProject
   const triggerClassName = isWorkbar
     ? 'inline-flex h-9 max-w-full min-w-0 items-center gap-1.5 rounded-[7px] border border-transparent px-2.5 text-[13px] font-medium leading-none text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-container-lowest)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]/35'

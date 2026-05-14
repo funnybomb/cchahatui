@@ -412,6 +412,42 @@ describe('Sidebar', () => {
     })
   })
 
+  it('uses real folder names instead of private sanitized project slugs', async () => {
+    createSession.mockResolvedValue('session-private-project-new')
+    const projectPath = '-Users-funnybomb-private-work-haha+tui'
+    const workDir = '/Users/funnybomb/private/work/haha+tui'
+    useSessionStore.setState({
+      availableProjects: [projectPath, workDir],
+      sessions: [
+        {
+          id: 'session-private',
+          title: 'https://huggingface.co/org/model',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          modifiedAt: '2026-05-01T02:00:00.000Z',
+          messageCount: 1,
+          projectPath,
+          workDir,
+          workDirExists: true,
+        },
+      ],
+    })
+
+    render(<Sidebar />)
+
+    expect(screen.getByText('haha+tui')).toBeInTheDocument()
+    expect(screen.getByText('https://huggingface.co/org/model')).toBeInTheDocument()
+    expect(screen.queryByText(projectPath)).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('sidebar-project-group')).toHaveLength(1)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'New session in haha+tui' }))
+    })
+
+    await waitFor(() => {
+      expect(createSession).toHaveBeenCalledWith(workDir)
+    })
+  })
+
   it('shows pinned, active, empty, and missing project states', () => {
     useProjectNavigationStore.getState().pinProject('/workspace/pinned')
     useSessionStore.setState({

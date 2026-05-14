@@ -29,6 +29,7 @@ import { TerminalSettings } from './TerminalSettings'
 import type { SessionListItem } from '../types/session'
 import { useMobileViewport } from '../hooks/useMobileViewport'
 import { isTauriRuntime } from '../lib/desktopRuntime'
+import { getProjectDisplayName } from '../lib/projectDisplay'
 
 const TASK_POLL_INTERVAL_MS = 1000
 const WORKSPACE_RESIZE_STEP = 32
@@ -51,9 +52,7 @@ function getSessionTerminalCwd(session: SessionListItem | undefined) {
 }
 
 function getProjectTitle(projectPath: string) {
-  const normalized = projectPath.replace(/[\\/]+$/, '')
-  const parts = normalized.split(/[\\/]+/).filter(Boolean)
-  return parts[parts.length - 1] || normalized || projectPath
+  return getProjectDisplayName(projectPath, projectPath)
 }
 
 function WorkspaceResizeHandle() {

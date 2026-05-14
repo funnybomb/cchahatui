@@ -18,6 +18,7 @@ import { FileSearchMenu, type FileSearchMenuHandle } from '../components/chat/Fi
 import { LocalSlashCommandPanel, type LocalSlashCommandName } from '../components/chat/LocalSlashCommandPanel'
 import { useMobileViewport } from '../hooks/useMobileViewport'
 import { isTauriRuntime } from '../lib/desktopRuntime'
+import { getProjectDisplayName } from '../lib/projectDisplay'
 import {
   FALLBACK_SLASH_COMMANDS,
   findSlashToken,
@@ -40,11 +41,6 @@ type Attachment = {
 }
 
 type Translate = ReturnType<typeof useTranslation>
-
-function projectNameFromPath(projectPath: string): string {
-  const parts = projectPath.split(/[\\/]+/).filter(Boolean)
-  return parts[parts.length - 1] || projectPath
-}
 
 function getApiErrorCode(error: unknown): string | null {
   if (!(error instanceof ApiError)) return null
@@ -303,7 +299,7 @@ export function EmptySession() {
       }))
       if (text || attachmentPayload.length > 0) {
         const projectMemoryPrompt = text && hasProjectMemory(projectMemory)
-          ? formatProjectMemoryPrompt(projectNameFromPath(workDir), projectMemory)
+          ? formatProjectMemoryPrompt(getProjectDisplayName(workDir), projectMemory)
           : ''
         const contentForModel = [projectMemoryPrompt, text].filter(Boolean).join('\n\n')
         sendMessage(sessionId, contentForModel, attachmentPayload, {

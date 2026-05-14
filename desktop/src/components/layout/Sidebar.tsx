@@ -11,6 +11,7 @@ import { useChatStore } from '../../stores/chatStore'
 import { hasProjectMemory, useProjectMemoryStore } from '../../stores/projectMemoryStore'
 import { useProjectNavigationStore } from '../../stores/projectNavigationStore'
 import { projectsApi } from '../../api/projects'
+import { getProjectDisplayName } from '../../lib/projectDisplay'
 
 const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 const isWindows = typeof navigator !== 'undefined' && /Win/.test(navigator.platform)
@@ -608,7 +609,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                           folder
                         </span>
                         <div className="min-w-0">
-                          <div className="truncate text-[13px] font-semibold leading-5 text-[var(--color-text-primary)]" title={isScopedProject ? group.key : undefined}>
+                          <div className="truncate text-[13px] font-semibold leading-5 text-[var(--color-text-primary)]" title={isScopedProject && /[\\/]/.test(group.key) ? group.key : undefined}>
                             {group.title}
                           </div>
                           <div className="flex min-w-0 items-center gap-1.5 truncate text-[11px] leading-4 text-[var(--color-text-tertiary)]">
@@ -975,7 +976,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
 }
 
 function getSessionProjectPath(session: SessionListItem): string {
-  return session.projectPath || session.workDir || UNSCOPED_PROJECT_KEY
+  return session.workDir || session.projectPath || UNSCOPED_PROJECT_KEY
 }
 
 function getSessionProjectCandidates(session: SessionListItem): string[] {
@@ -983,10 +984,7 @@ function getSessionProjectCandidates(session: SessionListItem): string[] {
 }
 
 function getProjectTitle(projectPath: string, fallback: string): string {
-  if (!projectPath || projectPath === UNSCOPED_PROJECT_KEY) return fallback
-  const normalized = projectPath.replace(/[\\/]+$/, '')
-  const parts = normalized.split(/[\\/]+/).filter(Boolean)
-  return parts[parts.length - 1] || normalized || fallback
+  return getProjectDisplayName(projectPath, fallback)
 }
 
 function groupByProject(
@@ -997,9 +995,13 @@ function groupByProject(
 ): ProjectGroup[] {
   const groups = new Map<string, ProjectGroup>()
   const pinnedSet = new Set(pinnedProjectPaths)
+  const groupedProjectRefs = new Set<string>()
 
   for (const session of sessions) {
     const key = getSessionProjectPath(session)
+    const candidates = getSessionProjectCandidates(session)
+    for (const candidate of candidates) groupedProjectRefs.add(candidate)
+    const pinned = candidates.some((candidate) => pinnedSet.has(candidate)) || pinnedSet.has(key)
     const modifiedAt = new Date(session.modifiedAt).getTime()
     const group = groups.get(key) ?? {
       key,
@@ -1007,19 +1009,19 @@ function groupByProject(
       sessions: [],
       modifiedAt,
       missingCount: 0,
-      pinned: pinnedSet.has(key),
+      pinned,
       empty: false,
     }
     group.sessions.push(session)
     group.modifiedAt = Math.max(group.modifiedAt, Number.isFinite(modifiedAt) ? modifiedAt : 0)
-    group.pinned = pinnedSet.has(key)
+    group.pinned = group.pinned || pinned
     group.empty = false
     if (session.workDirExists === false) group.missingCount += 1
     groups.set(key, group)
   }
 
   for (const projectPath of projectPaths) {
-    if (!projectPath || groups.has(projectPath)) continue
+    if (!projectPath || groups.has(projectPath) || groupedProjectRefs.has(projectPath)) continue
     groups.set(projectPath, {
       key: projectPath,
       title: getProjectTitle(projectPath, fallbackTitle),

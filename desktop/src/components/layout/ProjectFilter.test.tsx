@@ -130,6 +130,24 @@ describe('ProjectFilter', () => {
     expect(screen.getAllByRole('button', { name: /NanmiCoder\/cc-haha/i })).toHaveLength(2)
   })
 
+  it('uses safe fallback names for path-sanitized project options without metadata', async () => {
+    const projectPath = '-Users-funnybomb-private-work-haha+tui'
+    useSessionStore.setState({
+      selectedProjects: [],
+      availableProjects: [projectPath],
+    })
+    getRecentProjectsMock.mockResolvedValue({ projects: [] })
+
+    render(<ProjectFilter />)
+
+    fireEvent.click(screen.getByRole('button', { name: /All projects/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('haha+tui')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(projectPath)).not.toBeInTheDocument()
+  })
+
   it('adds a project by typed path in web browsers', async () => {
     getRecentProjectsMock
       .mockResolvedValueOnce({ projects: [] })

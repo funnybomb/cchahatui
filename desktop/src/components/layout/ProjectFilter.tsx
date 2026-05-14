@@ -6,6 +6,7 @@ import { projectsApi } from '../../api/projects'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useTranslation } from '../../i18n'
+import { getProjectDisplayName } from '../../lib/projectDisplay'
 
 type DropdownPos = {
   top: number
@@ -460,13 +461,7 @@ function compareProjectOptions(a: ProjectOption, b: ProjectOption) {
 }
 
 function fallbackProjectTitle(projectPath: string, fallback: string) {
-  if (!projectPath || projectPath === '_unknown') return fallback
-  if (projectPath.includes('/')) {
-    return projectPath.split('/').filter(Boolean).pop() || fallback
-  }
-
-  const segments = projectPath.split('-').filter(Boolean)
-  return segments[segments.length - 1] || projectPath || fallback
+  return getProjectDisplayName(projectPath, fallback)
 }
 
 function ChevronIcon({ open }: { open: boolean }) {

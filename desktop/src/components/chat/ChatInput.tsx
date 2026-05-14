@@ -32,6 +32,7 @@ import {
 } from './composerUtils'
 import { useMobileViewport } from '../../hooks/useMobileViewport'
 import { isTauriRuntime } from '../../lib/desktopRuntime'
+import { getProjectDisplayName } from '../../lib/projectDisplay'
 
 type GitInfo = SessionGitInfo
 
@@ -55,11 +56,6 @@ type ChatInputProps = {
 }
 
 const EMPTY_WORKSPACE_REFERENCES: WorkspaceChatReference[] = []
-
-function projectNameFromPath(projectPath: string): string {
-  const parts = projectPath.split(/[\\/]+/).filter(Boolean)
-  return parts[parts.length - 1] || projectPath
-}
 
 function workspaceReferenceToAttachment(reference: WorkspaceChatReference): Attachment {
   return {
@@ -470,7 +466,7 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
       ? formatWorkspaceReferencePrompt(workspaceReferences)
       : ''
     const projectMemoryPrompt = !isMemberSession && hasProjectMemory(projectMemory)
-      ? formatProjectMemoryPrompt(projectNameFromPath(activeProjectPath), projectMemory)
+      ? formatProjectMemoryPrompt(getProjectDisplayName(activeProjectPath), projectMemory)
       : ''
     const contentForModel = [projectMemoryPrompt, workspaceReferencePrompt, text].filter(Boolean).join('\n\n')
     const displayContent = text || (
