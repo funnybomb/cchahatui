@@ -26,6 +26,7 @@ import {
 } from './repositoryLaunchService.js'
 import { cleanSessionTitleSource } from '../../utils/sessionTitleText.js'
 import { getCchahatuiProjectConfigDir } from '../../utils/cchahatuiConfig.js'
+import { projectService } from './projectService.js'
 
 // ============================================================================
 // Types
@@ -796,9 +797,15 @@ export class SessionService {
     }
 
     // Optionally filter to a specific project
+    const hiddenProjectPaths = await projectService.getHiddenProjectPaths()
+
     if (projectFilter) {
       const sanitized = this.sanitizePath(projectFilter)
-      projectDirs = projectDirs.filter((d) => d === sanitized)
+      projectDirs = hiddenProjectPaths.has(sanitized)
+        ? []
+        : projectDirs.filter((d) => d === sanitized)
+    } else if (hiddenProjectPaths.size > 0) {
+      projectDirs = projectDirs.filter((dir) => !hiddenProjectPaths.has(dir))
     }
 
     const results: Array<{ filePath: string; projectDir: string; sessionId: string }> = []

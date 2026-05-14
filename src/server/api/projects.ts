@@ -41,7 +41,7 @@ async function removeProject(url: URL): Promise<Response> {
   if (!projectPath) {
     throw ApiError.badRequest('path query parameter is required')
   }
-  const removed = await projectService.removeProject(projectPath)
-  if (removed) clearRecentProjectsCache()
-  return Response.json({ ok: true, removed })
+  const result = await projectService.removeProject(projectPath)
+  if (result.removed || result.hidden) clearRecentProjectsCache()
+  return Response.json({ ok: true, ...result, removed: result.removed || result.hidden })
 }

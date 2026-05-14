@@ -5,6 +5,7 @@ import * as path from 'path'
 import { handleProjectsApi } from '../api/projects.js'
 import { handleSessionsApi } from '../api/sessions.js'
 import { ProjectService } from '../services/projectService.js'
+import { sanitizePath } from '../../utils/sessionStoragePortable.js'
 
 let tmpDir: string
 let originalConfigDir: string | undefined
@@ -49,6 +50,31 @@ async function run(command: string[], cwd: string): Promise<void> {
   if (exitCode !== 0) {
     throw new Error(`Command failed: ${command.join(' ')}\n${stderr || stdout}`)
   }
+}
+
+async function writeSessionFile(workDir: string, sessionId: string) {
+  const projectDir = sanitizePath(workDir)
+  const sessionFile = path.join(tmpDir, 'projects', projectDir, `${sessionId}.jsonl`)
+  await fs.mkdir(path.dirname(sessionFile), { recursive: true })
+  await fs.writeFile(
+    sessionFile,
+    [
+      JSON.stringify({
+        type: 'session-meta',
+        isMeta: true,
+        workDir,
+        timestamp: '2026-05-01T00:00:00.000Z',
+      }),
+      JSON.stringify({
+        type: 'user',
+        message: { role: 'user', content: 'Draft project plan' },
+        timestamp: '2026-05-01T00:00:01.000Z',
+      }),
+      '',
+    ].join('\n'),
+    'utf-8',
+  )
+  return { projectDir, sessionFile }
 }
 
 describe('ProjectService', () => {
@@ -130,6 +156,77 @@ describe('ProjectService', () => {
     })
     expect(added.identity.key).toContain(realProjectDir)
     expect(added.identity.key).not.toContain('token')
+  })
+
+  test('removes saved projects by real path and records a hidden project key', async () => {
+    const projectDir = path.join(tmpDir, 'workspace', 'saved-hidden')
+    await fs.mkdir(projectDir, { recursive: true })
+    const realProjectDir = await fs.realpath(projectDir)
+
+    const service = new ProjectService()
+    await service.addProject(projectDir)
+    const result = await service.removeProject(projectDir)
+    const projects = await service.listProjects()
+    const indexPath = path.join(tmpDir, 'cchahatui', 'projects.json')
+    const persisted = JSON.parse(await fs.readFile(indexPath, 'utf-8')) as {
+      hiddenProjectPaths?: string[]
+    }
+
+    expect(result).toEqual({ removed: true, hidden: true })
+    expect(projects).toEqual([])
+    expect(persisted.hiddenProjectPaths).toContain(sanitizePath(realProjectDir))
+  })
+
+  test('hides a session-derived project without deleting its JSONL file', async () => {
+    const projectDir = path.join(tmpDir, 'workspace', 'old-shared-project')
+    await fs.mkdir(projectDir, { recursive: true })
+    const { projectDir: projectKey, sessionFile } = await writeSessionFile(projectDir, 'session-hidden-1')
+
+    const before = makeRequest('GET', '/api/sessions?limit=20')
+    const beforeRes = await handleSessionsApi(before.req, before.url, before.segments)
+    const beforeBody = await beforeRes.json() as { sessions: Array<{ id: string; projectPath: string }> }
+    expect(beforeBody.sessions).toContainEqual(expect.objectContaining({
+      id: 'session-hidden-1',
+      projectPath: projectKey,
+    }))
+
+    const remove = makeRequest('DELETE', `/api/projects?path=${encodeURIComponent(projectKey)}`)
+    const removeRes = await handleProjectsApi(remove.req, remove.url, remove.segments)
+    const removeBody = await removeRes.json() as { removed: boolean; hidden?: boolean }
+    expect(removeBody).toMatchObject({ removed: true, hidden: true })
+    expect((await fs.stat(sessionFile)).isFile()).toBe(true)
+
+    const after = makeRequest('GET', '/api/sessions?limit=20')
+    const afterRes = await handleSessionsApi(after.req, after.url, after.segments)
+    const afterBody = await afterRes.json() as { sessions: Array<{ id: string }> }
+    expect(afterBody.sessions.map((session) => session.id)).not.toContain('session-hidden-1')
+
+    const filtered = makeRequest('GET', `/api/sessions?project=${encodeURIComponent(projectKey)}&limit=20`)
+    const filteredRes = await handleSessionsApi(filtered.req, filtered.url, filtered.segments)
+    const filteredBody = await filteredRes.json() as { sessions: Array<{ id: string }> }
+    expect(filteredBody.sessions).toEqual([])
+  })
+
+  test('adding a hidden project restores its session-derived project listing', async () => {
+    const projectDir = path.join(tmpDir, 'workspace', 'restore-hidden')
+    await fs.mkdir(projectDir, { recursive: true })
+    const { projectDir: projectKey } = await writeSessionFile(projectDir, 'session-restore-1')
+
+    const service = new ProjectService()
+    await service.removeProject(projectKey)
+    const hidden = makeRequest('GET', '/api/sessions?limit=20')
+    const hiddenRes = await handleSessionsApi(hidden.req, hidden.url, hidden.segments)
+    const hiddenBody = await hiddenRes.json() as { sessions: Array<{ id: string }> }
+    expect(hiddenBody.sessions.map((session) => session.id)).not.toContain('session-restore-1')
+
+    await service.addProject(projectDir)
+    const restored = makeRequest('GET', '/api/sessions?limit=20')
+    const restoredRes = await handleSessionsApi(restored.req, restored.url, restored.segments)
+    const restoredBody = await restoredRes.json() as { sessions: Array<{ id: string; projectPath: string }> }
+    expect(restoredBody.sessions).toContainEqual(expect.objectContaining({
+      id: 'session-restore-1',
+      projectPath: projectKey,
+    }))
   })
 })
 

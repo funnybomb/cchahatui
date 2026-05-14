@@ -11,7 +11,7 @@ import {
 import { findCanonicalGitRoot } from '../../utils/git.js'
 import { sanitizePath } from '../../utils/sessionStoragePortable.js'
 
-const CURRENT_PROJECT_INDEX_SCHEMA_VERSION = 2
+const CURRENT_PROJECT_INDEX_SCHEMA_VERSION = 3
 
 export type ProjectGitIdentity = {
   isGit: boolean
@@ -39,6 +39,7 @@ type SavedProject = {
 type ProjectIndex = {
   schemaVersion: typeof CURRENT_PROJECT_INDEX_SCHEMA_VERSION
   projects: SavedProject[]
+  hiddenProjectPaths: string[]
 }
 
 export type ProjectEntry = {
@@ -57,6 +58,7 @@ export type ProjectEntry = {
 const DEFAULT_INDEX: ProjectIndex = {
   schemaVersion: CURRENT_PROJECT_INDEX_SCHEMA_VERSION,
   projects: [],
+  hiddenProjectPaths: [],
 }
 
 const DESKTOP_WORKTREE_MARKER = '/.claude/worktrees/'
@@ -127,7 +129,15 @@ function normalizeProjectIndex(value: unknown): ProjectIndex | null {
   return {
     schemaVersion: CURRENT_PROJECT_INDEX_SCHEMA_VERSION,
     projects,
+    hiddenProjectPaths: normalizeHiddenProjectPaths(value.hiddenProjectPaths),
   }
+}
+
+function normalizeHiddenProjectPaths(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value
+    .map((item) => typeof item === 'string' ? item.trim() : '')
+    .filter(Boolean))]
 }
 
 async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
@@ -198,6 +208,40 @@ function makeProjectIdentity(realPath: string, git: ProjectGitIdentity): Project
     canonicalPath: realPath,
     git,
   }
+}
+
+function getProjectHiddenKey(projectPath: string): string {
+  return sanitizePath(projectPath)
+}
+
+function getSavedProjectMatchKeys(project: SavedProject): string[] {
+  const paths = [
+    project.path,
+    project.identity?.canonicalPath,
+  ].filter((value): value is string => Boolean(value))
+
+  return [...new Set(paths.flatMap((projectPath) => [
+    projectPath,
+    path.resolve(projectPath),
+    getProjectHiddenKey(projectPath),
+  ]))]
+}
+
+async function getRemovalCandidates(inputPath: string): Promise<Set<string>> {
+  const trimmed = inputPath.trim()
+  const candidates = new Set<string>([trimmed])
+  const resolvedPath = path.resolve(trimmed)
+  candidates.add(resolvedPath)
+  candidates.add(getProjectHiddenKey(trimmed))
+  candidates.add(getProjectHiddenKey(resolvedPath))
+
+  const realPath = await fs.realpath(resolvedPath).catch(() => null)
+  if (realPath) {
+    candidates.add(realPath)
+    candidates.add(getProjectHiddenKey(realPath))
+  }
+
+  return candidates
 }
 
 async function pathExistsAsDirectory(realPath: string): Promise<boolean> {
@@ -292,12 +336,28 @@ export class ProjectService {
     await writeJsonFile(this.getIndexPath(), {
       schemaVersion: CURRENT_PROJECT_INDEX_SCHEMA_VERSION,
       projects: index.projects,
+      hiddenProjectPaths: index.hiddenProjectPaths,
     })
+  }
+
+  async getHiddenProjectPaths(): Promise<Set<string>> {
+    const index = await this.readIndex()
+    return new Set(index.hiddenProjectPaths)
+  }
+
+  async isProjectHidden(projectPath: string): Promise<boolean> {
+    const hidden = await this.getHiddenProjectPaths()
+    return hidden.has(projectPath) || hidden.has(getProjectHiddenKey(projectPath))
   }
 
   async listProjects(): Promise<ProjectEntry[]> {
     const index = await this.readIndex()
-    const existing = index.projects.filter((project) => project.path && project.lastOpenedAt)
+    const hidden = new Set(index.hiddenProjectPaths)
+    const existing = index.projects.filter((project) =>
+      project.path &&
+      project.lastOpenedAt &&
+      !getSavedProjectMatchKeys(project).some((key) => hidden.has(key))
+    )
     const projects = await Promise.all(
       existing.map(async (project) => {
         if (!(await pathExistsAsDirectory(project.path))) return null
@@ -337,6 +397,11 @@ export class ProjectService {
       sessionCount: 0,
       saved: true,
     })
+    const hiddenProjectPaths = index.hiddenProjectPaths.filter((hiddenPath) =>
+      hiddenPath !== entry.projectPath &&
+      hiddenPath !== getProjectHiddenKey(realPath) &&
+      hiddenPath !== getProjectHiddenKey(resolvedPath)
+    )
     const projects = existing
       ? index.projects.map((project) =>
         project.path === realPath ? { ...project, identity: entry.identity, lastOpenedAt: now } : project,
@@ -347,29 +412,53 @@ export class ProjectService {
     await this.writeIndex({
       schemaVersion: CURRENT_PROJECT_INDEX_SCHEMA_VERSION,
       projects,
+      hiddenProjectPaths,
     })
 
     return entry
   }
 
-  async removeProject(inputPath: string): Promise<boolean> {
+  async removeProject(inputPath: string): Promise<{ removed: boolean; hidden: boolean }> {
     const trimmed = inputPath.trim()
     if (!trimmed) {
       throw ApiError.badRequest('path is required')
     }
 
-    const resolvedPath = path.resolve(trimmed)
-    const realPath = await fs.realpath(resolvedPath).catch(() => resolvedPath)
     const index = await this.readIndex()
-    const projects = index.projects.filter((project) => project.path !== realPath)
-    if (projects.length === index.projects.length) {
-      return false
+    const candidates = await getRemovalCandidates(trimmed)
+    const removedProjects: SavedProject[] = []
+    const projects = index.projects.filter((project) => {
+      const matched = getSavedProjectMatchKeys(project).some((key) => candidates.has(key))
+      if (matched) removedProjects.push(project)
+      return !matched
+    })
+    const hiddenCandidates = new Set(index.hiddenProjectPaths)
+    for (const candidate of candidates) {
+      if (!path.isAbsolute(candidate)) hiddenCandidates.add(candidate)
     }
+    for (const project of removedProjects) {
+      hiddenCandidates.add(getProjectHiddenKey(project.path))
+      if (project.identity?.canonicalPath) {
+        hiddenCandidates.add(getProjectHiddenKey(project.identity.canonicalPath))
+      }
+    }
+    const hiddenProjectPaths = [...hiddenCandidates]
+      .map((projectPath) => projectPath.trim())
+      .filter(Boolean)
+      .sort()
+    const previousHiddenProjectPaths = new Set(index.hiddenProjectPaths)
+    const hidden = hiddenProjectPaths.length !== index.hiddenProjectPaths.length
+      || hiddenProjectPaths.some((projectPath) => !previousHiddenProjectPaths.has(projectPath))
+
     await this.writeIndex({
       schemaVersion: CURRENT_PROJECT_INDEX_SCHEMA_VERSION,
       projects,
+      hiddenProjectPaths,
     })
-    return true
+    return {
+      removed: projects.length !== index.projects.length,
+      hidden,
+    }
   }
 }
 

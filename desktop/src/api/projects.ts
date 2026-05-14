@@ -12,6 +12,6 @@ export const projectsApi = {
 
   removeProject(path: string) {
     const query = new URLSearchParams({ path })
-    return api.delete<{ ok: true; removed: boolean }>(`/api/projects?${query.toString()}`)
+    return api.delete<{ ok: true; removed: boolean; hidden?: boolean }>(`/api/projects?${query.toString()}`)
   },
 }
