@@ -58,7 +58,7 @@ describe('DirectoryPicker', () => {
     vi.mocked(sessionsApi.getRecentProjects).mockResolvedValue({
       projects: [{
         projectPath: '/workspace/project',
-        realPath: '/workspace/project',
+        realPath: '/Users/nanmi/workspace/project',
         projectName: 'project',
         repoName: 'NanmiCoder/OpenCutSkill',
         branch: 'main',
@@ -70,7 +70,7 @@ describe('DirectoryPicker', () => {
 
     render(
       <DirectoryPicker
-        value="/workspace/project"
+        value="/Users/nanmi/workspace/project"
         onChange={vi.fn()}
       />,
     )
@@ -80,6 +80,8 @@ describe('DirectoryPicker', () => {
     const trigger = await waitFor(() => screen.getAllByRole('button', { name: /NanmiCoder\/OpenCutSkill/ })[0])
     expect(trigger).toHaveTextContent('NanmiCoder/OpenCutSkill')
     expect(trigger).not.toHaveTextContent('main')
+    expect(screen.getByText('~/workspace/project')).toBeInTheDocument()
+    expect(screen.queryByText('/Users/nanmi/workspace/project')).not.toBeInTheDocument()
   })
 
   it('supports the flat workbar trigger variant without changing the selected label', () => {
@@ -97,9 +99,9 @@ describe('DirectoryPicker', () => {
     expect(trigger.className).not.toContain('rounded-full')
   })
 
-  it('constrains long workbar project names without hiding the full path from hover users', () => {
+  it('constrains long workbar project names while keeping the hover path private', () => {
     const longProjectName = 'project-with-a-very-long-directory-name-that-should-not-stretch-the-launch-bar'
-    const longPath = `/workspace/${longProjectName}`
+    const longPath = `/Users/nanmi/workspace/${longProjectName}`
 
     render(
       <DirectoryPicker
@@ -112,7 +114,8 @@ describe('DirectoryPicker', () => {
     const trigger = screen.getByRole('button')
     const label = screen.getByText(longProjectName)
     const triggerClasses = trigger.className.split(/\s+/)
-    expect(trigger).toHaveAttribute('title', longPath)
+    expect(trigger).toHaveAttribute('title', `~/workspace/${longProjectName}`)
+    expect(trigger.getAttribute('title')).not.toContain('/Users/nanmi')
     expect(triggerClasses).toContain('max-w-full')
     expect(triggerClasses).not.toContain('w-full')
     expect(trigger.parentElement?.className).toContain('max-w-[320px]')

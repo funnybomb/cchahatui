@@ -117,7 +117,8 @@ describe('ProjectFilter', () => {
 
     await waitFor(() => {
       expect(screen.getByText('NanmiCoder/cc-haha')).toBeInTheDocument()
-      expect(screen.getByText('/Users/nanmi/workspace/myself_code/claude-code-haha')).toBeInTheDocument()
+      expect(screen.getByText('~/workspace/myself_code/claude-code-haha')).toBeInTheDocument()
+      expect(screen.queryByText('/Users/nanmi/workspace/myself_code/claude-code-haha')).not.toBeInTheDocument()
       expect(screen.getByText('NanmiCoder/OpenCutSkill')).toBeInTheDocument()
     })
 

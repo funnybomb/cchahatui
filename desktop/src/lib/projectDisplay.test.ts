@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getProjectDisplayName } from './projectDisplay'
+import { getProjectDisplayName, getProjectDisplayPath } from './projectDisplay'
 
 describe('project display names', () => {
   it('uses the basename for absolute POSIX, Windows, and worktree paths', () => {
@@ -16,5 +16,17 @@ describe('project display names', () => {
   it('keeps ordinary labels and URL-like labels readable', () => {
     expect(getProjectDisplayName('project-alpha')).toBe('project-alpha')
     expect(getProjectDisplayName('https://huggingface.co/org/model')).toBe('model')
+  })
+
+  it('redacts user home directories in display paths', () => {
+    expect(getProjectDisplayPath('/Users/person/work/projects/haha+tui')).toBe('~/work/projects/haha+tui')
+    expect(getProjectDisplayPath('/Users/person')).toBe('~')
+    expect(getProjectDisplayPath('/home/person/work/project')).toBe('~/work/project')
+    expect(getProjectDisplayPath('C:\\Users\\person\\work\\cc-haha')).toBe('~\\work\\cc-haha')
+  })
+
+  it('keeps shared paths readable and hides sanitized path slug roots', () => {
+    expect(getProjectDisplayPath('/workspace/project-alpha')).toBe('/workspace/project-alpha')
+    expect(getProjectDisplayPath('-Users-person-private-work-haha+tui')).toBe('haha+tui')
   })
 })

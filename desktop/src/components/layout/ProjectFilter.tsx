@@ -6,7 +6,7 @@ import { projectsApi } from '../../api/projects'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useTranslation } from '../../i18n'
-import { getProjectDisplayName } from '../../lib/projectDisplay'
+import { getProjectDisplayName, getProjectDisplayPath } from '../../lib/projectDisplay'
 
 type DropdownPos = {
   top: number
@@ -124,7 +124,7 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
         projectPath: project.projectPath,
         realPath: project.realPath,
         title: project.repoName || project.projectName,
-        subtitle: project.realPath,
+        subtitle: getProjectDisplayPath(project.realPath),
         isGit: project.isGit,
         branch: project.branch,
         modifiedAt: project.modifiedAt,

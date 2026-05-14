@@ -9,6 +9,8 @@ const WORKTREE_MARKERS = [
 
 const SANITIZED_PATH_ROOT_RE = /^-*(?:users|home|private|var|tmp|volumes|mnt|workspace|workspaces|project|projects|repo|repos)(?:-|$)/i
 const SANITIZED_WINDOWS_PATH_RE = /^[a-z]--/i
+const POSIX_HOME_PATH_RE = /^\/(?:Users|home)\/[^/\\]+(?=$|[\\/])/i
+const WINDOWS_HOME_PATH_RE = /^[a-z]:[\\/]+Users[\\/]+[^\\/]+(?=$|[\\/])/i
 
 export function getProjectDisplayName(projectPath: string | null | undefined, fallback = ''): string {
   const trimmed = (projectPath ?? '').trim()
@@ -30,6 +32,29 @@ export function getProjectDisplayName(projectPath: string | null | undefined, fa
   }
 
   return normalized || fallback
+}
+
+export function getProjectDisplayPath(projectPath: string | null | undefined, fallback = ''): string {
+  const trimmed = (projectPath ?? '').trim()
+  if (!trimmed || trimmed === UNSCOPED_PROJECT_KEY || trimmed === UNKNOWN_PROJECT_KEY) return fallback
+
+  const posixHomeMatch = trimmed.match(POSIX_HOME_PATH_RE)
+  if (posixHomeMatch) {
+    const rest = trimmed.slice(posixHomeMatch[0].length).replace(/^[\\/]+/, '')
+    return rest ? `~/${rest}` : '~'
+  }
+
+  const windowsHomeMatch = trimmed.match(WINDOWS_HOME_PATH_RE)
+  if (windowsHomeMatch) {
+    const rest = trimmed.slice(windowsHomeMatch[0].length).replace(/^[\\/]+/, '').replace(/[\\/]+/g, '\\')
+    return rest ? `~\\${rest}` : '~'
+  }
+
+  if (isSanitizedPathSlug(trimmed)) {
+    return getProjectDisplayName(trimmed, fallback)
+  }
+
+  return trimmed || fallback
 }
 
 function stripWorktreePath(projectPath: string): string {

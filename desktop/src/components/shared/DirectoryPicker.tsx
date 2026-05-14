@@ -8,7 +8,7 @@ import { useMobileViewport } from '../../hooks/useMobileViewport'
 import { MobileBottomSheet } from './MobileBottomSheet'
 import { useSessionStore } from '../../stores/sessionStore'
 import { isTauriRuntime } from '../../lib/desktopRuntime'
-import { getProjectDisplayName } from '../../lib/projectDisplay'
+import { getProjectDisplayName, getProjectDisplayPath } from '../../lib/projectDisplay'
 
 type Props = {
   value: string
@@ -158,6 +158,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
   const selectedProject = projects.find((p) => p.realPath === value)
   const isWorkbar = variant === 'workbar'
   const selectedLabel = selectedProject?.repoName || selectedProject?.projectName || getProjectDisplayName(value)
+  const selectedDisplayPath = getProjectDisplayPath(value)
   const showGitIcon = selectedProject?.isGit || isGitProject
   const triggerClassName = isWorkbar
     ? 'inline-flex h-9 max-w-full min-w-0 items-center gap-1.5 rounded-[7px] border border-transparent px-2.5 text-[13px] font-medium leading-none text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-container-lowest)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]/35'
@@ -191,6 +192,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
         ) : (
           projects.map((project) => {
             const isSelected = project.realPath === value
+            const displayPath = getProjectDisplayPath(project.realPath)
             return (
               <button
                 key={project.projectPath}
@@ -214,7 +216,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
                     {project.repoName || project.projectName}
                   </div>
                   <div className="truncate font-[var(--font-mono)] text-[11px] text-[var(--color-text-tertiary)]">
-                    {project.realPath}
+                    {displayPath}
                   </div>
                 </div>
                 {isSelected && (
@@ -307,7 +309,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
           ref={triggerRef}
           onClick={() => { setIsOpen(!isOpen); setMode('recent') }}
           className={triggerClassName}
-          title={value}
+          title={selectedDisplayPath}
         >
           {showGitIcon ? (
             <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" className="shrink-0 text-[var(--color-text-secondary)]">
