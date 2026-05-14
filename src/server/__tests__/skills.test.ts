@@ -84,7 +84,7 @@ describe('Skills API', () => {
       ['---', 'description: User scope', '---', '', '# User skill'].join('\n'),
     )
     await writeSkill(
-      path.join(projectRoot, '.claude', 'skills'),
+      path.join(projectRoot, '.cchahatui', 'skills'),
       'project-skill',
       ['---', 'description: Project scope', '---', '', '# Project skill'].join('\n'),
     )
@@ -128,8 +128,8 @@ describe('Skills API', () => {
   it('resolves project skill details from the nearest project skills directory', async () => {
     const projectRoot = path.join(tmpHome, 'workspace')
     const nestedRoot = path.join(projectRoot, 'packages', 'app')
-    const nestedSkillsRoot = path.join(nestedRoot, '.claude', 'skills')
-    const parentSkillsRoot = path.join(projectRoot, '.claude', 'skills')
+    const nestedSkillsRoot = path.join(nestedRoot, '.cchahatui', 'skills')
+    const parentSkillsRoot = path.join(projectRoot, '.cchahatui', 'skills')
 
     await writeSkill(
       parentSkillsRoot,
@@ -156,6 +156,26 @@ describe('Skills API', () => {
     expect(body.detail.skillRoot).toBe(path.join(nestedSkillsRoot, 'shared-skill'))
     expect(body.detail.files).toContainEqual(
       expect.objectContaining({ path: 'SKILL.md', body: 'child body' }),
+    )
+  })
+
+  it('keeps legacy project skills as a compatibility fallback', async () => {
+    const projectRoot = path.join(tmpHome, 'workspace')
+    const cwd = path.join(projectRoot, 'packages', 'app')
+
+    await writeSkill(
+      path.join(projectRoot, '.claude', 'skills'),
+      'legacy-project-skill',
+      ['---', 'description: Legacy project scope', '---', '', '# Legacy project skill'].join('\n'),
+    )
+
+    const { req, url, segments } = makeRequest(`/api/skills?cwd=${encodeURIComponent(cwd)}`)
+    const res = await handleSkillsApi(req, url, segments)
+
+    expect(res.status).toBe(200)
+    const body = await res.json() as { skills: Array<{ name: string; source: string }> }
+    expect(body.skills).toContainEqual(
+      expect.objectContaining({ name: 'legacy-project-skill', source: 'project' }),
     )
   })
 })

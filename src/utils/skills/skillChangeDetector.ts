@@ -14,12 +14,14 @@ import {
   getSkillsPath,
   onDynamicSkillsLoaded,
 } from '../../skills/loadSkillsDir.js'
+import { getCwd } from '../cwd.js'
 import { resetSentSkillNames } from '../attachments.js'
 import { registerCleanup } from '../cleanupRegistry.js'
 import { logForDebugging } from '../debug.js'
 import { getFsImplementation } from '../fsOperations.js'
 import { executeConfigChangeHooks, hasBlockingResult } from '../hooks.js'
 import { createSignal } from '../signal.js'
+import { getProjectSkillRootsForDirectory } from './projectSkillPaths.js'
 
 /**
  * Time in milliseconds to wait for file writes to stabilize before processing.
@@ -172,7 +174,7 @@ async function getWatchablePaths(): Promise<string[]> {
   const fs = getFsImplementation()
   const paths: string[] = []
 
-  // User skills directory (~/.claude/skills)
+  // User skills directory (cchahatui user config skills/)
   const userSkillsPath = getSkillsPath('userSettings', 'skills')
   if (userSkillsPath) {
     try {
@@ -194,14 +196,13 @@ async function getWatchablePaths(): Promise<string[]> {
     }
   }
 
-  // Project skills directory (.claude/skills)
-  const projectSkillsPath = getSkillsPath('projectSettings', 'skills')
-  if (projectSkillsPath) {
+  // Project skills directories (.cchahatui/skills plus legacy fallback)
+  for (const projectSkillsPath of getProjectSkillRootsForDirectory(
+    getCwd(),
+  )) {
     try {
-      // For project settings, resolve to absolute path
-      const absolutePath = platformPath.resolve(projectSkillsPath)
-      await fs.stat(absolutePath)
-      paths.push(absolutePath)
+      await fs.stat(projectSkillsPath)
+      paths.push(projectSkillsPath)
     } catch {
       // Path doesn't exist, skip it
     }
@@ -212,7 +213,7 @@ async function getWatchablePaths(): Promise<string[]> {
   if (projectCommandsPath) {
     try {
       // For project settings, resolve to absolute path
-      const absolutePath = platformPath.resolve(projectCommandsPath)
+      const absolutePath = platformPath.resolve(getCwd(), projectCommandsPath)
       await fs.stat(absolutePath)
       paths.push(absolutePath)
     } catch {
@@ -222,12 +223,13 @@ async function getWatchablePaths(): Promise<string[]> {
 
   // Additional directories (--add-dir) skills
   for (const dir of getAdditionalDirectoriesForClaudeMd()) {
-    const additionalSkillsPath = platformPath.join(dir, '.claude', 'skills')
-    try {
-      await fs.stat(additionalSkillsPath)
-      paths.push(additionalSkillsPath)
-    } catch {
-      // Path doesn't exist, skip it
+    for (const additionalSkillsPath of getProjectSkillRootsForDirectory(dir)) {
+      try {
+        await fs.stat(additionalSkillsPath)
+        paths.push(additionalSkillsPath)
+      } catch {
+        // Path doesn't exist, skip it
+      }
     }
   }
 
@@ -309,3 +311,5 @@ export const skillChangeDetector = {
   subscribe,
   resetForTesting,
 }
+
+export const getWatchablePathsForTesting = getWatchablePaths

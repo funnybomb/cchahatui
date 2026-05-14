@@ -10,7 +10,7 @@ import * as path from 'path'
 import * as fs from 'fs/promises'
 import { parseFrontmatter } from '../../utils/frontmatterParser.js'
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
-import { getProjectDirsUpToHome } from '../../utils/markdownConfigLoader.js'
+import { getProjectSkillDirsUpToHome } from '../../utils/skills/projectSkillPaths.js'
 import { getCwd } from '../../utils/cwd.js'
 import { loadAllPluginsCacheOnly } from '../../utils/plugins/pluginLoader.js'
 import type { LoadedPlugin } from '../../types/plugin.js'
@@ -89,7 +89,7 @@ function getRequestedCwd(url: URL): string {
 }
 
 function getProjectSkillsDirs(cwd: string): string[] {
-  return getProjectDirsUpToHome('skills', cwd)
+  return getProjectSkillDirsUpToHome(cwd)
 }
 
 async function loadSkillMeta(

@@ -206,7 +206,7 @@ export const en = {
 
   // Settings > Terminal
   'settings.terminal.title': 'Terminal',
-  'settings.terminal.description': 'Run host-machine commands for plugin, skill, and MCP setup. The desktop app includes cc-tui; replace documented claude <args> with cc-tui <args>, for example: cc-tui plugin install ... or cc-tui mcp add ...',
+  'settings.terminal.description': 'Run host-machine commands for plugin, skill, and MCP setup. The desktop app includes cc-tui, for example: cc-tui plugin install ... or cc-tui mcp add ...',
   'settings.terminal.clear': 'Clear',
   'settings.terminal.restart': 'Restart',
   'settings.terminal.windowTitle': 'Host shell',
@@ -575,7 +575,7 @@ export const en = {
 
   // Settings > Skills
   'settings.skills.title': 'Installed Skills',
-  'settings.skills.description': 'Skills extend cc-tui with specialized capabilities. The desktop app reads Claude Code-compatible skills from the isolated cchahatui user config directory and also merges project and plugin skills.',
+  'settings.skills.description': 'Skills extend cc-tui with specialized capabilities. The desktop app reads skills from the isolated cchahatui user config directory and also merges project and plugin skills.',
   'settings.skills.browserTitle': 'Browse installed skills',
   'settings.skills.browserEyebrow': 'Skill Browser',
   'settings.skills.browserDescription': 'Inspect bundled, project, and user skills, compare their scope, and open each skill folder to read its docs and source files.',
@@ -593,7 +593,7 @@ export const en = {
   'settings.skills.ready': 'Ready',
   'settings.skills.unavailable': 'Unavailable',
   'settings.skills.empty': 'No skills installed',
-  'settings.skills.emptyHint': 'Desktop reads skills from the isolated cchahatui user config directory by default. When a non-shared $CLAUDE_CONFIG_DIR is set, skills are read from its skills/ directory. Project skills still live in the current project .claude/skills/.',
+  'settings.skills.emptyHint': 'User skills live at ~/Library/Application Support/cchahatui/config/skills/<skill-name>/SKILL.md. Project skills live at .cchahatui/skills/<skill-name>/SKILL.md in the current project.',
   'settings.skills.back': 'Back to list',
   'settings.skills.files': 'files',
   'settings.skills.entryFile': 'entry file',
@@ -614,7 +614,7 @@ export const en = {
   'settings.plugins.description': 'Inspect installed plugins, see their health, and apply changes to the desktop runtime. Install from the Terminal tab with cc-tui plugin install ...',
   'settings.plugins.browserTitle': 'Browse installed plugins',
   'settings.plugins.browserEyebrow': 'Plugin Manager',
-  'settings.plugins.browserDescription': 'Plugins bundle skills, agents, hooks, MCP servers, and language tooling. Desktop reads plugins from the isolated cchahatui user config directory by default. When a non-shared $CLAUDE_CONFIG_DIR is set, plugins are read from its plugins/ directory.',
+  'settings.plugins.browserDescription': 'Plugins bundle skills, agents, hooks, MCP servers, and language tooling. Desktop reads plugins from the isolated cchahatui user config directory by default.',
   'settings.plugins.entryEyebrow': 'Plugin Detail',
   'settings.plugins.summary.total': 'Total plugins',
   'settings.plugins.summary.enabled': 'Enabled',

@@ -1,4 +1,5 @@
 import { feature } from 'bun:bundle'
+import { join } from 'path'
 import { getInvokedSkillsForAgent } from '../../bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import {
@@ -181,6 +182,10 @@ export function initSkillImprovement(): void {
   }
 }
 
+export function getProjectSkillImprovementPath(skillName: string): string {
+  return join(getCwd(), '.cchahatui', 'skills', skillName, 'SKILL.md')
+}
+
 /**
  * Apply skill improvements by calling a side-channel LLM to rewrite the skill file.
  * Fire-and-forget — does not block the main conversation.
@@ -191,11 +196,9 @@ export async function applySkillImprovement(
 ): Promise<void> {
   if (!skillName) return
 
-  const { join } = await import('path')
   const fs = await import('fs/promises')
 
-  // Skills live at .claude/skills/<name>/SKILL.md relative to CWD
-  const filePath = join(getCwd(), '.claude', 'skills', skillName, 'SKILL.md')
+  const filePath = getProjectSkillImprovementPath(skillName)
 
   let currentContent: string
   try {

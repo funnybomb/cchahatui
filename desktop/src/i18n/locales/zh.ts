@@ -208,7 +208,7 @@ export const zh: Record<TranslationKey, string> = {
 
   // Settings > Terminal
   'settings.terminal.title': '终端',
-  'settings.terminal.description': '直接运行宿主机命令，用于安装插件、Skills、MCP 等扩展。桌面端已内置 cc-tui；文档里的 claude <参数> 可替换成 cc-tui <参数>，例如 cc-tui plugin install ... 或 cc-tui mcp add ...',
+  'settings.terminal.description': '直接运行宿主机命令，用于安装插件、Skills、MCP 等扩展。桌面端已内置 cc-tui，例如 cc-tui plugin install ... 或 cc-tui mcp add ...',
   'settings.terminal.clear': '清屏',
   'settings.terminal.restart': '重启',
   'settings.terminal.windowTitle': '宿主机 Shell',
@@ -577,7 +577,7 @@ export const zh: Record<TranslationKey, string> = {
 
   // Settings > Skills
   'settings.skills.title': '已安装技能',
-  'settings.skills.description': '技能扩展 cc-tui 的能力。桌面端默认读取 cchahatui 独立用户配置目录下的 Claude Code 兼容技能，也会合并项目和插件技能。',
+  'settings.skills.description': '技能扩展 cc-tui 的能力。桌面端默认读取 cchahatui 独立用户配置目录下的技能，也会合并项目和插件技能。',
   'settings.skills.browserTitle': '浏览已安装技能',
   'settings.skills.browserEyebrow': '技能浏览器',
   'settings.skills.browserDescription': '查看内置、项目和用户技能，比较它们的来源与规模，并打开技能目录阅读文档和源码文件。',
@@ -595,7 +595,7 @@ export const zh: Record<TranslationKey, string> = {
   'settings.skills.ready': '可查看',
   'settings.skills.unavailable': '不可用',
   'settings.skills.empty': '暂无已安装技能',
-  'settings.skills.emptyHint': '桌面端默认读取 cchahatui 独立用户配置目录下的 skills/；设置非共享 $CLAUDE_CONFIG_DIR 时读取该目录下的 skills/。项目技能仍放在当前项目 .claude/skills/。',
+  'settings.skills.emptyHint': '用户技能放在 ~/Library/Application Support/cchahatui/config/skills/<技能名>/SKILL.md；项目技能放在当前项目 .cchahatui/skills/<技能名>/SKILL.md。',
   'settings.skills.back': '返回列表',
   'settings.skills.files': '个文件',
   'settings.skills.entryFile': '入口文件',
@@ -616,7 +616,7 @@ export const zh: Record<TranslationKey, string> = {
   'settings.plugins.description': '查看已安装插件、运行状态，并把插件变更应用到桌面端运行时。安装请到「终端」页运行 cc-tui plugin install ...。',
   'settings.plugins.browserTitle': '浏览已安装插件',
   'settings.plugins.browserEyebrow': '插件管理',
-  'settings.plugins.browserDescription': '插件会把技能、Agent、Hook、MCP 服务和语言工具打包在一起。桌面端默认读取 cchahatui 独立用户配置目录下的 plugins/；设置非共享 $CLAUDE_CONFIG_DIR 时读取该目录下的 plugins/。',
+  'settings.plugins.browserDescription': '插件会把技能、Agent、Hook、MCP 服务和语言工具打包在一起。桌面端默认读取 cchahatui 独立用户配置目录下的 plugins/。',
   'settings.plugins.entryEyebrow': '插件详情',
   'settings.plugins.summary.total': '插件总数',
   'settings.plugins.summary.enabled': '已启用',

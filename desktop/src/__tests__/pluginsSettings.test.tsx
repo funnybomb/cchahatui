@@ -246,6 +246,7 @@ describe('Settings > Plugins tab', () => {
     expect(screen.getByText('Browse installed plugins')).toBeInTheDocument()
     expect(screen.getByText('Plugin Manager')).toBeInTheDocument()
     expect(screen.getByText(/isolated cchahatui user config directory/)).toBeInTheDocument()
+    expect(screen.queryByText(/CLAUDE_CONFIG_DIR/)).not.toBeInTheDocument()
     expect(screen.queryByText(/~\/\.claude\/plugins/)).not.toBeInTheDocument()
     expect(screen.getAllByText('Needs attention').length).toBeGreaterThan(0)
     expect(screen.getByText('github')).toBeInTheDocument()
