@@ -5,6 +5,8 @@ import { isTauriRuntime } from '../../lib/desktopRuntime'
 import { useUpdateStore } from '../../stores/updateStore'
 import { formatBytes } from '../../lib/formatBytes'
 
+export const DESKTOP_UPDATE_REFRESH_INTERVAL_MS = 30 * 60 * 1000
+
 export function UpdateChecker() {
   const t = useTranslation()
   const status = useUpdateStore((s) => s.status)
@@ -20,8 +22,24 @@ export function UpdateChecker() {
   const dismissPrompt = useUpdateStore((s) => s.dismissPrompt)
 
   useEffect(() => {
+    if (!isTauriRuntime()) return
     void initialize()
   }, [initialize])
+
+  useEffect(() => {
+    if (!isTauriRuntime()) return
+
+    const intervalId = window.setInterval(() => {
+      const { status, checkForUpdates } = useUpdateStore.getState()
+      if (status === 'checking' || status === 'downloading' || status === 'restarting') {
+        return
+      }
+
+      void checkForUpdates({ silent: true })
+    }, DESKTOP_UPDATE_REFRESH_INTERVAL_MS)
+
+    return () => window.clearInterval(intervalId)
+  }, [])
 
   if (!isTauriRuntime()) return null
 
