@@ -18,6 +18,13 @@ export type ProjectMemoryEntry = {
   source: 'manual'
 }
 
+export type ProjectMemorySanitizationResult = {
+  summary: string
+  sections: ProjectMemorySections
+  blockedCount: number
+  blockedReasons: string[]
+}
+
 type ProjectMemoryPersistence = {
   version: typeof PROJECT_MEMORY_STORAGE_VERSION
   projects: Record<string, ProjectMemoryEntry>
@@ -46,6 +53,18 @@ const EMPTY_SECTIONS: ProjectMemorySections = {
   openTasks: [],
 }
 
+const RESTRICTED_MEMORY_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
+  { reason: 'secret', pattern: /\b(api[-_\s]?key|secret|password|bearer\s+token|access[-_\s]?token|refresh[-_\s]?token|client[-_\s]?secret)\b/i },
+  { reason: 'secret', pattern: /\b(sk-[A-Za-z0-9_-]{12,}|xox[baprs]-[A-Za-z0-9-]+|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]{16})\b/ },
+  { reason: 'oauth', pattern: /\boauth\b/i },
+  { reason: 'private-key', pattern: /BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY/i },
+  { reason: 'private-path', pattern: /(^|\s)(\/Users\/[^\s]+|\/home\/[^\s]+|[A-Za-z]:\\Users\\[^\s]+)/i },
+  { reason: 'chat-raw', pattern: /\b(chat transcript|raw chat|jsonl transcript|聊天原文|会话原文|原始对话)\b/i },
+  { reason: 'chat-raw', pattern: /"(role|content|timestamp|uuid)"\s*:/ },
+  { reason: 'temporary', pattern: /\b(scratch|temporary thought|temp thought|failed attempt|failure attempt)\b/i },
+  { reason: 'temporary', pattern: /(临时思路|临时想法|失败尝试)/ },
+]
+
 function normalizeLines(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return [...new Set(value
@@ -61,6 +80,75 @@ function normalizeSections(value: unknown): ProjectMemorySections {
     decisions: normalizeLines(record.decisions),
     openTasks: normalizeLines(record.openTasks),
   }
+}
+
+function getRestrictedMemoryReason(line: string): string | null {
+  for (const { reason, pattern } of RESTRICTED_MEMORY_PATTERNS) {
+    if (pattern.test(line)) return reason
+  }
+  return null
+}
+
+function sanitizeMemoryLines(lines: string[]) {
+  const kept: string[] = []
+  const blockedReasons: string[] = []
+  let blockedCount = 0
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const reason = getRestrictedMemoryReason(trimmed)
+    if (reason) {
+      blockedCount += 1
+      blockedReasons.push(reason)
+      continue
+    }
+    kept.push(trimmed)
+  }
+
+  return {
+    lines: [...new Set(kept)],
+    blockedCount,
+    blockedReasons,
+  }
+}
+
+export function sanitizeProjectMemoryDraft(
+  summary: string,
+  sections: Partial<ProjectMemorySections> = {},
+): ProjectMemorySanitizationResult {
+  const summaryResult = sanitizeMemoryLines(summary.split('\n'))
+  const factsResult = sanitizeMemoryLines(normalizeLines(sections.facts ?? []))
+  const decisionsResult = sanitizeMemoryLines(normalizeLines(sections.decisions ?? []))
+  const openTasksResult = sanitizeMemoryLines(normalizeLines(sections.openTasks ?? []))
+
+  return {
+    summary: summaryResult.lines.join('\n'),
+    sections: {
+      facts: factsResult.lines,
+      decisions: decisionsResult.lines,
+      openTasks: openTasksResult.lines,
+    },
+    blockedCount: summaryResult.blockedCount + factsResult.blockedCount + decisionsResult.blockedCount + openTasksResult.blockedCount,
+    blockedReasons: [...new Set([
+      ...summaryResult.blockedReasons,
+      ...factsResult.blockedReasons,
+      ...decisionsResult.blockedReasons,
+      ...openTasksResult.blockedReasons,
+    ])],
+  }
+}
+
+function getSafeDefaultMemory(
+  projectPath: string,
+  summary: string,
+  sections: Partial<ProjectMemorySections> = {},
+  updatedAt?: string,
+  includeInContext = true,
+): ProjectMemoryEntry | null {
+  const sanitized = sanitizeProjectMemoryDraft(summary, sections)
+  if (!hasReusableMemory(sanitized.summary, sanitized.sections)) return null
+  return getDefaultMemory(projectPath, sanitized.summary, sanitized.sections, updatedAt, includeInContext)
 }
 
 function hasReusableMemory(summary: string, sections: ProjectMemorySections) {
@@ -113,14 +201,16 @@ export function normalizeProjectMemoryPersistence(value: unknown): ProjectMemory
       )
       const summary = typeof record.summary === 'string' ? record.summary.trim() : ''
       const sections = normalizeSections(record.sections)
-      if (!projectPath || !hasReusableMemory(summary, sections)) continue
-      projects[projectPath] = getDefaultMemory(
+      if (!projectPath) continue
+      const memory = getSafeDefaultMemory(
         projectPath,
         summary,
         sections,
         typeof record.updatedAt === 'string' ? record.updatedAt : undefined,
         record.includeInContext !== false,
       )
+      if (!memory) continue
+      projects[projectPath] = memory
     }
     return { version: PROJECT_MEMORY_STORAGE_VERSION, projects }
   }
@@ -137,7 +227,8 @@ export function normalizeProjectMemoryPersistence(value: unknown): ProjectMemory
 
     if (typeof rawEntry === 'string') {
       const summary = rawEntry.trim()
-      if (summary) projects[projectPath] = getDefaultMemory(projectPath, summary)
+      const memory = getSafeDefaultMemory(projectPath, summary)
+      if (memory) projects[projectPath] = memory
       continue
     }
 
@@ -148,14 +239,15 @@ export function normalizeProjectMemoryPersistence(value: unknown): ProjectMemory
     ) || projectPath
     const summary = typeof entry.summary === 'string' ? entry.summary.trim() : ''
     const sections = normalizeSections(entry.sections)
-    if (!hasReusableMemory(summary, sections)) continue
-    projects[entryProjectPath] = getDefaultMemory(
+    const memory = getSafeDefaultMemory(
       entryProjectPath,
       summary,
       sections,
       typeof entry.updatedAt === 'string' ? entry.updatedAt : undefined,
       entry.includeInContext !== false,
     )
+    if (!memory) continue
+    projects[entryProjectPath] = memory
   }
 
   return { version: PROJECT_MEMORY_STORAGE_VERSION, projects }
@@ -194,13 +286,15 @@ export function formatProjectMemoryPrompt(projectName: string, memory: ProjectMe
   const entry = typeof memory === 'string'
     ? getDefaultMemory(projectName, memory)
     : memory
-  if (entry.includeInContext === false || !hasProjectMemory(entry)) return ''
-  const normalized = entry.summary.trim()
+  if (entry.includeInContext === false) return ''
+  const sanitized = sanitizeProjectMemoryDraft(entry.summary, entry.sections)
+  if (!hasReusableMemory(sanitized.summary, sanitized.sections)) return ''
+  const normalized = sanitized.summary.trim()
   const body = [
     normalized ? `Summary:\n${normalized}` : '',
-    formatSection('Facts:', entry.sections.facts),
-    formatSection('Decisions:', entry.sections.decisions),
-    formatSection('Open tasks:', entry.sections.openTasks),
+    formatSection('Facts:', sanitized.sections.facts),
+    formatSection('Decisions:', sanitized.sections.decisions),
+    formatSection('Open tasks:', sanitized.sections.openTasks),
   ].filter(Boolean).join('\n\n')
 
   return [
@@ -225,16 +319,11 @@ export const useProjectMemoryStore = create<ProjectMemoryStore>((set, get) => ({
   setMemory: (projectPath, summary, sections = {}, includeInContext = true) => {
     const key = normalizeProjectPath(projectPath)
     if (!key) return
-    const trimmed = summary.trim()
-    const normalizedSections: ProjectMemorySections = {
-      facts: normalizeLines(sections.facts ?? []),
-      decisions: normalizeLines(sections.decisions ?? []),
-      openTasks: normalizeLines(sections.openTasks ?? []),
-    }
+    const sanitized = sanitizeProjectMemoryDraft(summary, sections)
     set((state) => {
       const memories = { ...state.memories }
-      if (hasReusableMemory(trimmed, normalizedSections)) {
-        memories[key] = getDefaultMemory(key, trimmed, normalizedSections, undefined, includeInContext)
+      if (hasReusableMemory(sanitized.summary, sanitized.sections)) {
+        memories[key] = getDefaultMemory(key, sanitized.summary, sanitized.sections, undefined, includeInContext)
       } else {
         delete memories[key]
       }

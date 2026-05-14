@@ -28,6 +28,7 @@ vi.mock('../../i18n', () => ({
       'sidebar.projectMemoryCharacters': '{count} chars',
       'sidebar.projectMemorySaved': 'Project memory saved.',
       'sidebar.projectMemoryCleared': 'Project memory cleared.',
+      'sidebar.projectMemoryRestrictedSkipped': 'Skipped {count} restricted memory item(s).',
     }
     let text = translations[key] ?? key
     for (const [name, value] of Object.entries(params ?? {})) {
@@ -135,6 +136,34 @@ describe('ProjectMemoryDialog', () => {
     expect(addToast).toHaveBeenCalledWith({
       type: 'success',
       message: 'Project memory cleared.',
+    })
+  })
+
+  it('warns and skips restricted memory content on save', () => {
+    render(
+      <ProjectMemoryDialog
+        open
+        projectPath="/workspace/project"
+        projectTitle="project"
+        onClose={() => {}}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Project memory summary'), {
+      target: {
+        value: [
+          'Use Bun for this repo.',
+          'API key: sk-testsecretvalue12345',
+          'Private path /Users/person/project',
+        ].join('\n'),
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(useProjectMemoryStore.getState().getMemory('/workspace/project')?.summary).toBe('Use Bun for this repo.')
+    expect(addToast).toHaveBeenCalledWith({
+      type: 'warning',
+      message: 'Skipped 2 restricted memory item(s).',
     })
   })
 })

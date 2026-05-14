@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '../../i18n'
-import { useProjectMemoryStore } from '../../stores/projectMemoryStore'
+import { sanitizeProjectMemoryDraft, useProjectMemoryStore } from '../../stores/projectMemoryStore'
 import { useUIStore } from '../../stores/uiStore'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
@@ -53,21 +53,24 @@ export function ProjectMemoryDialog({ open, projectPath, projectTitle, onClose }
   ])
 
   const handleSave = () => {
+    const sanitized = sanitizeProjectMemoryDraft(summary, {
+      facts: textToLines(facts),
+      decisions: textToLines(decisions),
+      openTasks: textToLines(openTasks),
+    })
     setMemory(
       projectPath,
-      summary,
-      {
-        facts: textToLines(facts),
-        decisions: textToLines(decisions),
-        openTasks: textToLines(openTasks),
-      },
+      sanitized.summary,
+      sanitized.sections,
       includeInContext,
     )
     addToast({
-      type: 'success',
-      message: summary.trim() || facts.trim() || decisions.trim() || openTasks.trim()
-        ? t('sidebar.projectMemorySaved')
-        : t('sidebar.projectMemoryCleared'),
+      type: sanitized.blockedCount > 0 ? 'warning' : 'success',
+      message: sanitized.blockedCount > 0
+        ? t('sidebar.projectMemoryRestrictedSkipped', { count: sanitized.blockedCount })
+        : summary.trim() || facts.trim() || decisions.trim() || openTasks.trim()
+          ? t('sidebar.projectMemorySaved')
+          : t('sidebar.projectMemoryCleared'),
     })
     onClose()
   }

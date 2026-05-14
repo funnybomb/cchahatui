@@ -86,6 +86,7 @@ export const zh: Record<TranslationKey, string> = {
   'sidebar.projectMemoryCharacters': '{count} 字',
   'sidebar.projectMemorySaved': '项目记忆已保存。',
   'sidebar.projectMemoryCleared': '项目记忆已清空。',
+  'sidebar.projectMemoryRestrictedSkipped': '已跳过 {count} 条受限记忆内容。',
   'sidebar.projectMemoryNoProject': '请先打开一个项目会话，再编辑项目记忆。',
   'sidebar.openProjectMemory': '编辑 {project} 的项目记忆',
   'sidebar.sessionRunning': '会话运行中',

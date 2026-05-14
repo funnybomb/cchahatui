@@ -84,6 +84,7 @@ export const en = {
   'sidebar.projectMemoryCharacters': '{count} chars',
   'sidebar.projectMemorySaved': 'Project memory saved.',
   'sidebar.projectMemoryCleared': 'Project memory cleared.',
+  'sidebar.projectMemoryRestrictedSkipped': 'Skipped {count} restricted memory item(s).',
   'sidebar.projectMemoryNoProject': 'Open a project session before editing project memory.',
   'sidebar.openProjectMemory': 'Edit memory for {project}',
   'sidebar.sessionRunning': 'Session running',

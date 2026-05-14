@@ -4,6 +4,7 @@ import {
   formatProjectMemoryPrompt,
   hasProjectMemory,
   normalizeProjectMemoryPersistence,
+  sanitizeProjectMemoryDraft,
   useProjectMemoryStore,
 } from './projectMemoryStore'
 
@@ -106,5 +107,109 @@ describe('projectMemoryStore', () => {
     expect(hasProjectMemory(memory)).toBe(true)
     expect(memory?.includeInContext).toBe(false)
     expect(formatProjectMemoryPrompt('app', memory!)).toBe('')
+  })
+
+  it('skips API keys, OAuth material, and private paths before persistence', () => {
+    useProjectMemoryStore.getState().setMemory('/workspace/app', [
+      'Use Bun for desktop work.',
+      'API key: sk-testsecretvalue12345',
+      'OAuth refresh token lives in provider settings.',
+      'Private path: /Users/person/private/project',
+    ].join('\n'))
+
+    const memory = useProjectMemoryStore.getState().getMemory('/workspace/app')
+    expect(memory?.summary).toBe('Use Bun for desktop work.')
+    expect(memory?.summary).not.toContain('sk-test')
+    expect(memory?.summary).not.toContain('OAuth')
+    expect(memory?.summary).not.toContain('/Users/person')
+  })
+
+  it('skips temporary thoughts, failed attempts, and raw chat transcript lines', () => {
+    const sanitized = sanitizeProjectMemoryDraft('Keep release notes aligned.', {
+      facts: [
+        'Use Bun.',
+        '临时思路: maybe rewrite this later',
+        'failed attempt: bad endpoint',
+        '{"role":"user","content":"raw chat"}',
+      ],
+    })
+
+    expect(sanitized.blockedCount).toBe(3)
+    expect(sanitized.sections.facts).toEqual(['Use Bun.'])
+    expect(sanitized.blockedReasons).toEqual(expect.arrayContaining(['temporary', 'chat-raw']))
+  })
+
+  it('preserves allowed project facts while removing restricted section lines', () => {
+    useProjectMemoryStore.getState().setMemory('/workspace/app', 'Prefer stable patch releases.', {
+      facts: ['Use Bun.', 'client_secret=do-not-store'],
+      decisions: ['Keep project records isolated.'],
+      openTasks: ['Run verify.', 'chat transcript pasted below'],
+    })
+
+    const memory = useProjectMemoryStore.getState().getMemory('/workspace/app')
+    expect(memory?.summary).toBe('Prefer stable patch releases.')
+    expect(memory?.sections.facts).toEqual(['Use Bun.'])
+    expect(memory?.sections.decisions).toEqual(['Keep project records isolated.'])
+    expect(memory?.sections.openTasks).toEqual(['Run verify.'])
+  })
+
+  it('sanitizes restricted content from legacy persisted memory during normalization', () => {
+    const normalized = normalizeProjectMemoryPersistence({
+      projects: {
+        '/workspace/app': {
+          projectPath: '/workspace/app',
+          summary: [
+            'Keep project memory concise.',
+            'API key: sk-legacysecretvalue12345',
+            'Private path: /Users/person/secret-project',
+          ].join('\n'),
+          sections: {
+            facts: ['Use Bun.', 'OAuth access token lives nearby.'],
+            decisions: ['Keep memory scoped.', '{"role":"user","content":"raw"}'],
+            openTasks: ['Run verify.', '失败尝试: copied transcript'],
+          },
+          includeInContext: true,
+          updatedAt: '2026-05-14T00:00:00.000Z',
+        },
+      },
+    })
+
+    expect(normalized.projects['/workspace/app']).toMatchObject({
+      summary: 'Keep project memory concise.',
+      sections: {
+        facts: ['Use Bun.'],
+        decisions: ['Keep memory scoped.'],
+        openTasks: ['Run verify.'],
+      },
+    })
+  })
+
+  it('sanitizes restricted loaded memory before formatting model context', () => {
+    const prompt = formatProjectMemoryPrompt('app', {
+      projectPath: '/workspace/app',
+      summary: [
+        'Use project-scoped memory only.',
+        'API key: sk-loadedsecretvalue12345',
+        'Private path: /Users/person/private',
+      ].join('\n'),
+      sections: {
+        facts: ['Use Bun.', 'OAuth refresh token exists.'],
+        decisions: ['Keep UI quiet.', 'chat transcript pasted below'],
+        openTasks: ['Run verify.', '{"role":"assistant","content":"raw"}'],
+      },
+      includeInContext: true,
+      updatedAt: '2026-05-14T00:00:00.000Z',
+      source: 'manual',
+    })
+
+    expect(prompt).toContain('Use project-scoped memory only.')
+    expect(prompt).toContain('- Use Bun.')
+    expect(prompt).toContain('- Keep UI quiet.')
+    expect(prompt).toContain('- Run verify.')
+    expect(prompt).not.toContain('sk-loaded')
+    expect(prompt).not.toContain('OAuth')
+    expect(prompt).not.toContain('/Users/person')
+    expect(prompt).not.toContain('"role"')
+    expect(prompt).not.toContain('chat transcript')
   })
 })
