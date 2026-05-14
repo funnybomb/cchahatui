@@ -10,6 +10,10 @@
 
 import { SettingsService } from '../services/settingsService.js'
 import { ProviderService } from '../services/providerService.js'
+import {
+  EFFORT_LEVELS,
+  resolveEffortLevel,
+} from '../services/effortDefaults.js'
 import { ApiError, errorResponse } from '../middleware/errorHandler.js'
 import { hasOpenAIAuthLogin } from '../../utils/auth.js'
 import { OPENAI_CODEX_MODEL_CATALOG } from '../../services/openaiAuth/models.js'
@@ -37,10 +41,7 @@ const DEFAULT_MODELS = [
   },
 ] as const
 
-const EFFORT_LEVELS = ['low', 'medium', 'high', 'max'] as const
-
 const DEFAULT_MODEL = 'claude-opus-4-7'
-const DEFAULT_EFFORT = 'medium'
 
 const settingsService = new SettingsService()
 const providerService = new ProviderService()
@@ -145,10 +146,32 @@ function getStandaloneModelList(): ApiModelInfo[] {
   return models
 }
 
-function normalizeEffortLevel(value: unknown): (typeof EFFORT_LEVELS)[number] {
-  return typeof value === 'string' && EFFORT_LEVELS.includes(value as (typeof EFFORT_LEVELS)[number])
-    ? value as (typeof EFFORT_LEVELS)[number]
-    : DEFAULT_EFFORT
+async function getCurrentEffortIdentity(userSettings: Record<string, unknown>): Promise<Array<string | null | undefined>> {
+  const { providers, activeId } = await providerService.listProviders()
+  const activeProvider = activeId ? providers.find((p) => p.id === activeId) : null
+
+  if (activeProvider) {
+    const managedSettings = await providerService.getManagedSettings().catch(() => ({}))
+    const managedEnv = (managedSettings.env as Record<string, string>) || {}
+    return [
+      activeProvider.name,
+      activeProvider.presetId,
+      activeProvider.models.main,
+      activeProvider.models.haiku,
+      activeProvider.models.sonnet,
+      activeProvider.models.opus,
+      typeof managedSettings.model === 'string' ? managedSettings.model : undefined,
+      managedEnv.ANTHROPIC_MODEL,
+    ]
+  }
+
+  const env = (userSettings.env as Record<string, string>) || {}
+  return [
+    typeof userSettings.model === 'string' ? userSettings.model : undefined,
+    env.ANTHROPIC_MODEL,
+    process.env.ANTHROPIC_MODEL,
+    DEFAULT_MODEL,
+  ]
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -288,7 +311,7 @@ async function handleCurrentModel(req: Request): Promise<Response> {
 async function handleEffort(req: Request): Promise<Response> {
   if (req.method === 'GET') {
     const settings = await settingsService.getUserSettings()
-    const level = normalizeEffortLevel(settings.effort)
+    const level = resolveEffortLevel(settings.effort, await getCurrentEffortIdentity(settings))
     return Response.json({ level, available: EFFORT_LEVELS })
   }
 

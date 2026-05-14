@@ -67,7 +67,7 @@ const DEFAULT_H5_ACCESS_SETTINGS: H5AccessSettings = {
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   permissionMode: 'default',
   currentModel: null,
-  effortLevel: 'medium',
+  effortLevel: 'high',
   thinkingEnabled: true,
   availableModels: [],
   activeProviderName: null,

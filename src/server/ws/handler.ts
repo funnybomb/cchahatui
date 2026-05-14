@@ -18,6 +18,7 @@ import { sessionService } from '../services/sessionService.js'
 import { SettingsService } from '../services/settingsService.js'
 import { ProviderService } from '../services/providerService.js'
 import { diagnosticsService } from '../services/diagnosticsService.js'
+import { resolveEffortLevel } from '../services/effortDefaults.js'
 import { deriveTitle, generateTitle, saveAiTitle } from '../services/titleService.js'
 import { parseSlashCommand } from '../../utils/slashCommandParsing.js'
 import {
@@ -1350,10 +1351,11 @@ type RuntimeSettings = {
 async function getRuntimeSettings(sessionId?: string): Promise<RuntimeSettings> {
   const runtimeOverride = sessionId ? runtimeOverrides.get(sessionId) : undefined
   if (runtimeOverride) {
+    let runtimeProvider: Awaited<ReturnType<ProviderService['listProviders']>>['providers'][number] | null = null
     if (typeof runtimeOverride.providerId === 'string') {
       const { providers } = await providerService.listProviders()
-      const providerExists = providers.some((provider) => provider.id === runtimeOverride.providerId)
-      if (!providerExists) {
+      runtimeProvider = providers.find((provider) => provider.id === runtimeOverride.providerId) ?? null
+      if (!runtimeProvider) {
         console.warn(
           `[WS] Ignoring stale runtime provider id for ${sessionId}: ${runtimeOverride.providerId}`,
         )
@@ -1363,10 +1365,15 @@ async function getRuntimeSettings(sessionId?: string): Promise<RuntimeSettings> 
     }
 
     const userSettings = await settingsService.getUserSettings()
-    const effort =
-      typeof userSettings.effort === 'string' && userSettings.effort.trim()
-        ? userSettings.effort
-        : undefined
+    const effort = resolveEffortLevel(userSettings.effort, [
+      runtimeOverride.modelId,
+      runtimeProvider?.name,
+      runtimeProvider?.presetId,
+      runtimeProvider?.models.main,
+      runtimeProvider?.models.haiku,
+      runtimeProvider?.models.sonnet,
+      runtimeProvider?.models.opus,
+    ])
     const thinking = resolveDesktopThinkingMode(userSettings)
 
     return {
@@ -1400,11 +1407,10 @@ async function getDefaultRuntimeSettings(): Promise<RuntimeSettings> {
     typeof modelSettings.modelContext === 'string' && modelSettings.modelContext.trim()
       ? modelSettings.modelContext
       : undefined
-  const effort =
-    typeof userSettings.effort === 'string' && userSettings.effort.trim()
-      ? userSettings.effort
-      : undefined
   const thinking = resolveDesktopThinkingMode(userSettings)
+  const activeProvider = resolvedActiveId
+    ? providers.find((provider) => provider.id === resolvedActiveId) ?? null
+    : null
 
   let model: string | undefined
   if (resolvedActiveId) {
@@ -1426,6 +1432,18 @@ async function getDefaultRuntimeSettings(): Promise<RuntimeSettings> {
         : undefined
     model = baseModel ? (modelContext ? `${baseModel}:${modelContext}` : baseModel) : undefined
   }
+  const modelEnv = (modelSettings.env as Record<string, string>) || {}
+  const effort = resolveEffortLevel(userSettings.effort, [
+    model,
+    typeof modelSettings.model === 'string' ? modelSettings.model : undefined,
+    modelEnv.ANTHROPIC_MODEL,
+    activeProvider?.name,
+    activeProvider?.presetId,
+    activeProvider?.models.main,
+    activeProvider?.models.haiku,
+    activeProvider?.models.sonnet,
+    activeProvider?.models.opus,
+  ])
 
   return {
     permissionMode: await settingsService.getPermissionMode().catch(() => undefined),

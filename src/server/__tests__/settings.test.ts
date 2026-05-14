@@ -579,6 +579,88 @@ describe('Models API', () => {
     expect(body.available).toEqual(['low', 'medium', 'high', 'max'])
   })
 
+  it('GET /api/effort should default to high for active DeepSeek providers', async () => {
+    const providerSvc = new ProviderService()
+    const provider = await providerSvc.addProvider({
+      presetId: 'deepseek',
+      name: 'DeepSeek',
+      baseUrl: 'https://api.deepseek.com',
+      apiKey: 'test-key',
+      apiFormat: 'openai_chat',
+      models: {
+        main: 'deepseek-v4-pro',
+        haiku: 'deepseek-v4-flash',
+        sonnet: 'deepseek-v4-pro',
+        opus: 'deepseek-v4-pro',
+      },
+    })
+    await providerSvc.activateProvider(provider.id)
+
+    const { req, url, segments } = makeRequest('GET', '/api/effort')
+    const res = await handleModelsApi(req, url, segments)
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.level).toBe('high')
+    expect(body.available).toEqual(['low', 'medium', 'high', 'max'])
+  })
+
+  it('GET /api/effort should preserve explicit effort for active DeepSeek providers', async () => {
+    const settingsSvc = new SettingsService()
+    await settingsSvc.updateUserSettings({ effort: 'max' })
+
+    const providerSvc = new ProviderService()
+    const provider = await providerSvc.addProvider({
+      presetId: 'deepseek',
+      name: 'DeepSeek',
+      baseUrl: 'https://api.deepseek.com',
+      apiKey: 'test-key',
+      apiFormat: 'openai_chat',
+      models: {
+        main: 'deepseek-v4-pro',
+        haiku: 'deepseek-v4-flash',
+        sonnet: 'deepseek-v4-pro',
+        opus: 'deepseek-v4-pro',
+      },
+    })
+    await providerSvc.activateProvider(provider.id)
+
+    const { req, url, segments } = makeRequest('GET', '/api/effort')
+    const res = await handleModelsApi(req, url, segments)
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.level).toBe('max')
+  })
+
+  it('GET /api/effort should fall back to high when active DeepSeek effort is stale', async () => {
+    const settingsSvc = new SettingsService()
+    await settingsSvc.updateUserSettings({ effort: 'turbo' })
+
+    const providerSvc = new ProviderService()
+    const provider = await providerSvc.addProvider({
+      presetId: 'deepseek',
+      name: 'DeepSeek',
+      baseUrl: 'https://api.deepseek.com',
+      apiKey: 'test-key',
+      apiFormat: 'openai_chat',
+      models: {
+        main: 'deepseek-v4-pro',
+        haiku: 'deepseek-v4-flash',
+        sonnet: 'deepseek-v4-pro',
+        opus: 'deepseek-v4-pro',
+      },
+    })
+    await providerSvc.activateProvider(provider.id)
+
+    const { req, url, segments } = makeRequest('GET', '/api/effort')
+    const res = await handleModelsApi(req, url, segments)
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.level).toBe('high')
+  })
+
   it('PUT /api/effort should set effort level', async () => {
     const { req, url, segments } = makeRequest('PUT', '/api/effort', { level: 'high' })
     const res = await handleModelsApi(req, url, segments)

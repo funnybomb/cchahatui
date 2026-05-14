@@ -145,6 +145,7 @@ describe('Settings > General tab', () => {
         context: '128k',
       },
       activeProviderName: 'DeepSeek',
+      effortLevel: 'high',
       thinkingEnabled: true,
       skipWebFetchPreflight: true,
       desktopNotificationsEnabled: true,
@@ -292,6 +293,7 @@ describe('Settings > General tab', () => {
 
     expect(screen.getByText(/DeepSeek supports thinking effort/)).toBeInTheDocument()
     expect(screen.getByText(/low and medium are compatibility-mapped to high/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'High' }).className).toContain('bg-[var(--color-brand)]')
   })
 
   it('updates effort guidance for non-DeepSeek models', () => {
