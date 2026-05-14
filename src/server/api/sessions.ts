@@ -34,7 +34,7 @@ import {
   type RewindTargetSelector,
 } from '../services/sessionRewindService.js'
 import { SessionStore } from '../../../adapters/common/session-store.js'
-import { describeProjectPath, projectService } from '../services/projectService.js'
+import { describeProjectPath, projectService, type ProjectIdentity } from '../services/projectService.js'
 
 const workspaceService = new WorkspaceService(
   async (sessionId) => (
@@ -754,6 +754,7 @@ type RecentProjectEntry = {
   isGit: boolean
   repoName: string | null
   branch: string | null
+  identity: ProjectIdentity
   modifiedAt: string
   sessionCount: number
   saved?: boolean

@@ -92,6 +92,19 @@ export type RecentProject = {
   isGit: boolean
   repoName: string | null
   branch: string | null
+  identity?: {
+    schemaVersion: 1
+    id: string
+    key: string
+    canonicalPath: string
+    git: {
+      isGit: boolean
+      repoRoot: string | null
+      remoteUrl: string | null
+      repoName: string | null
+      branch: string | null
+    }
+  }
   modifiedAt: string
   sessionCount: number
   saved?: boolean

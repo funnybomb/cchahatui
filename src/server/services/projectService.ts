@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { createHash } from 'crypto'
 import { ApiError } from '../middleware/errorHandler.js'
 import { readRecoverableJsonFile } from './recoverableJsonFile.js'
 import {
@@ -7,14 +8,32 @@ import {
   getCchahatuiManagedConfigDir,
   getCchahatuiProjectConfigDir,
 } from '../../utils/cchahatuiConfig.js'
+import { findCanonicalGitRoot } from '../../utils/git.js'
 import { sanitizePath } from '../../utils/sessionStoragePortable.js'
 
-const CURRENT_PROJECT_INDEX_SCHEMA_VERSION = 1
+const CURRENT_PROJECT_INDEX_SCHEMA_VERSION = 2
+
+export type ProjectGitIdentity = {
+  isGit: boolean
+  repoRoot: string | null
+  remoteUrl: string | null
+  repoName: string | null
+  branch: string | null
+}
+
+export type ProjectIdentity = {
+  schemaVersion: 1
+  id: string
+  key: string
+  canonicalPath: string
+  git: ProjectGitIdentity
+}
 
 type SavedProject = {
   path: string
   addedAt: string
   lastOpenedAt: string
+  identity?: ProjectIdentity
 }
 
 type ProjectIndex = {
@@ -29,6 +48,7 @@ export type ProjectEntry = {
   isGit: boolean
   repoName: string | null
   branch: string | null
+  identity: ProjectIdentity
   modifiedAt: string
   sessionCount: number
   saved: boolean
@@ -45,6 +65,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
+function normalizeProjectGitIdentity(value: unknown): ProjectGitIdentity | null {
+  if (!isRecord(value) || typeof value.isGit !== 'boolean') return null
+
+  const repoRoot = typeof value.repoRoot === 'string' ? value.repoRoot : null
+  const remoteUrl = typeof value.remoteUrl === 'string' ? value.remoteUrl : null
+  const repoName = typeof value.repoName === 'string' ? value.repoName : null
+  const branch = typeof value.branch === 'string' ? value.branch : null
+  return {
+    isGit: value.isGit,
+    repoRoot,
+    remoteUrl,
+    repoName,
+    branch,
+  }
+}
+
+function normalizeProjectIdentity(value: unknown): ProjectIdentity | undefined {
+  if (
+    !isRecord(value)
+    || value.schemaVersion !== 1
+    || typeof value.id !== 'string'
+    || typeof value.key !== 'string'
+    || typeof value.canonicalPath !== 'string'
+  ) {
+    return undefined
+  }
+
+  const git = normalizeProjectGitIdentity(value.git)
+  if (!git) return undefined
+
+  return {
+    schemaVersion: 1,
+    id: value.id,
+    key: value.key,
+    canonicalPath: value.canonicalPath,
+    git,
+  }
+}
+
 function normalizeProjectIndex(value: unknown): ProjectIndex | null {
   if (!isRecord(value) || !Array.isArray(value.projects)) {
     return null
@@ -59,7 +118,8 @@ function normalizeProjectIndex(value: unknown): ProjectIndex | null {
     seen.add(normalizedPath)
     const addedAt = typeof item.addedAt === 'string' ? item.addedAt : new Date(0).toISOString()
     const lastOpenedAt = typeof item.lastOpenedAt === 'string' ? item.lastOpenedAt : addedAt
-    projects.push({ path: normalizedPath, addedAt, lastOpenedAt })
+    const identity = normalizeProjectIdentity(item.identity)
+    projects.push({ path: normalizedPath, addedAt, lastOpenedAt, ...(identity ? { identity } : {}) })
   }
 
   projects.sort((a, b) => b.lastOpenedAt.localeCompare(a.lastOpenedAt))
@@ -84,6 +144,62 @@ function projectNameForPath(realPath: string): string {
   return displayRoot.split(path.sep).filter(Boolean).pop() || realPath
 }
 
+function repoNameFromRemote(remote: string | null): string | null {
+  if (!remote) return null
+  const match = remote.match(/:([^/]+\/[^/]+?)(?:\.git)?$/) || remote.match(/\/([^/]+\/[^/]+?)(?:\.git)?$/)
+  return match ? match[1]! : null
+}
+
+function redactRemoteUrl(remote: string | null): string | null {
+  if (!remote) return null
+  try {
+    const parsed = new URL(remote)
+    parsed.username = ''
+    parsed.password = ''
+    return parsed.toString().replace(/\/$/, '')
+  } catch {
+    return remote.replace(/^(https?:\/\/)[^/@]+@/i, '$1')
+  }
+}
+
+async function runGit(realPath: string, args: string[]): Promise<string | null> {
+  try {
+    const proc = Bun.spawn(['git', ...args], {
+      cwd: realPath,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ])
+    void stderr
+    if (exitCode !== 0) return null
+    return stdout.trim() || null
+  } catch {
+    return null
+  }
+}
+
+function makeProjectIdentity(realPath: string, git: ProjectGitIdentity): ProjectIdentity {
+  const key = JSON.stringify({
+    canonicalPath: realPath,
+    git: {
+      repoRoot: git.repoRoot,
+      remoteUrl: git.remoteUrl,
+    },
+  })
+  const id = `prj_${createHash('sha256').update(key).digest('hex').slice(0, 16)}`
+  return {
+    schemaVersion: 1,
+    id,
+    key,
+    canonicalPath: realPath,
+    git,
+  }
+}
+
 async function pathExistsAsDirectory(realPath: string): Promise<boolean> {
   try {
     const stat = await fs.stat(realPath)
@@ -106,47 +222,33 @@ export async function describeProjectPath(
   let isGit = false
   let repoName: string | null = null
   let branch: string | null = null
+  let repoRoot: string | null = null
+  let remoteUrl: string | null = null
 
-  try {
-    const proc = Bun.spawn(['git', 'rev-parse', '--is-inside-work-tree'], {
-      cwd: realPath,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
-    const out = await new Response(proc.stdout).text()
-    isGit = out.trim() === 'true'
+  const insideWorkTree = await runGit(realPath, ['rev-parse', '--is-inside-work-tree'])
+  isGit = insideWorkTree === 'true'
 
-    if (isGit) {
-      const [branchResult, remoteResult] = await Promise.all([
-        (async () => {
-          const branchProc = Bun.spawn(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], {
-            cwd: realPath,
-            stdout: 'pipe',
-            stderr: 'pipe',
-          })
-          return (await new Response(branchProc.stdout).text()).trim() || null
-        })(),
-        (async () => {
-          try {
-            const remoteProc = Bun.spawn(['git', 'remote', 'get-url', 'origin'], {
-              cwd: realPath,
-              stdout: 'pipe',
-              stderr: 'pipe',
-            })
-            const remote = (await new Response(remoteProc.stdout).text()).trim()
-            const match = remote.match(/:([^/]+\/[^/]+?)(?:\.git)?$/) || remote.match(/\/([^/]+\/[^/]+?)(?:\.git)?$/)
-            return match ? match[1]! : null
-          } catch {
-            return null
-          }
-        })(),
-      ])
-      branch = branchResult && branchResult.startsWith('worktree-desktop-') ? null : branchResult
-      repoName = remoteResult
-    }
-  } catch {
-    // Non-git project directories are valid projects.
+  if (isGit) {
+    const [repoRootResult, branchResult, remoteResult] = await Promise.all([
+      runGit(realPath, ['rev-parse', '--show-toplevel']),
+      runGit(realPath, ['rev-parse', '--abbrev-ref', 'HEAD']),
+      runGit(realPath, ['remote', 'get-url', 'origin']),
+    ])
+
+    repoRoot = findCanonicalGitRoot(realPath)
+      ?? (repoRootResult ? await fs.realpath(repoRootResult).catch(() => path.resolve(repoRootResult)) : null)
+    remoteUrl = redactRemoteUrl(remoteResult)
+    branch = branchResult && branchResult.startsWith('worktree-desktop-') ? null : branchResult
+    repoName = repoNameFromRemote(remoteUrl)
   }
+
+  const identity = makeProjectIdentity(realPath, {
+    isGit,
+    repoRoot,
+    remoteUrl,
+    repoName,
+    branch,
+  })
 
   return {
     projectPath,
@@ -155,6 +257,7 @@ export async function describeProjectPath(
     isGit,
     repoName,
     branch,
+    identity,
     modifiedAt: options?.modifiedAt ?? new Date().toISOString(),
     sessionCount: options?.sessionCount ?? 0,
     saved: options?.saved ?? false,
@@ -226,14 +329,19 @@ export class ProjectService {
       throw ApiError.badRequest('Project path must be an existing directory')
     }
 
-    const now = new Date().toISOString()
     const index = await this.readIndex()
     const existing = index.projects.find((project) => project.path === realPath)
+    const now = new Date().toISOString()
+    const entry = await describeProjectPath(realPath, {
+      modifiedAt: now,
+      sessionCount: 0,
+      saved: true,
+    })
     const projects = existing
       ? index.projects.map((project) =>
-        project.path === realPath ? { ...project, lastOpenedAt: now } : project,
+        project.path === realPath ? { ...project, identity: entry.identity, lastOpenedAt: now } : project,
       )
-      : [{ path: realPath, addedAt: now, lastOpenedAt: now }, ...index.projects]
+      : [{ path: realPath, identity: entry.identity, addedAt: now, lastOpenedAt: now }, ...index.projects]
 
     projects.sort((a, b) => b.lastOpenedAt.localeCompare(a.lastOpenedAt))
     await this.writeIndex({
@@ -241,11 +349,7 @@ export class ProjectService {
       projects,
     })
 
-    return await describeProjectPath(realPath, {
-      modifiedAt: now,
-      sessionCount: 0,
-      saved: true,
-    })
+    return entry
   }
 
   async removeProject(inputPath: string): Promise<boolean> {

@@ -7,7 +7,7 @@
 <div align="center">
 
 [![Release](https://img.shields.io/github/v/release/funnybomb/cchahatui?label=release)](https://github.com/funnybomb/cchahatui/releases)
-[![Version](https://img.shields.io/badge/version-v0.3.1-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.3.1)
+[![Version](https://img.shields.io/badge/version-v0.3.9-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.3.9)
 [![Stars](https://img.shields.io/github/stars/funnybomb/cchahatui?style=social)](https://github.com/funnybomb/cchahatui/stargazers)
 [![Desktop](https://img.shields.io/badge/desktop-macOS%20%7C%20Windows-2ea44f)](#install-the-desktop-app)
 [![DeepSeek](https://img.shields.io/badge/default-DeepSeek%20V4-1f6feb)](#deepseek-first)
