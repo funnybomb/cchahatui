@@ -1,8 +1,6 @@
 name: Release Desktop
 
 on:
-  push:
-    tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       draft:
@@ -72,16 +70,6 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' desktop/src-tauri/tauri.conf.json)
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Validate tag matches version
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          EXPECTED_TAG="v${{ steps.version.outputs.value }}"
-          if [ "${GITHUB_REF_NAME}" != "$EXPECTED_TAG" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match app version ${EXPECTED_TAG}"
-            exit 1
-          fi
 
       - name: Load release notes
         id: release_notes
@@ -174,7 +162,7 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'cchahatui v__VERSION__'
           releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          releaseDraft: ${{ inputs.draft }}
           prerelease: false
           updaterJsonPreferNsis: true
           assetNamePattern: ${{ matrix.asset_name_pattern }}

@@ -141,4 +141,5 @@ await run(['git', 'commit', '-m', `release: v${next}`])
 await run(['git', 'tag', '-a', `v${next}`, '-m', `Release v${next}`])
 
 console.log(`\n  Done! Created commit and tag v${next}`)
-console.log(`\n  To trigger the build:\n    git push origin main --tags\n`)
+console.log(`\n  Desktop packaging is manual-only. Push code with:\n    git push origin main\n`)
+console.log(`\n  Only push tags and dispatch Release Desktop when packaged artifacts are explicitly needed.\n`)

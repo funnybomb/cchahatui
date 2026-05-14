@@ -24,11 +24,11 @@ Install root dependencies with `bun install`, then install desktop dependencies 
 
 ## Desktop Release Workflow
 - Desktop releases are built remotely by GitHub Actions, not by uploading local build artifacts.
-- The release workflow is `.github/workflows/release-desktop.yml`; it triggers automatically on `push` of tags matching `v*.*.*`.
+- The release workflow is `.github/workflows/release-desktop.yml`; it is manual-only through `workflow_dispatch`. Tag pushes must not automatically package Desktop builds.
 - Release workflow builds wait on a non-live `quality:gate --mode pr` preflight and upload `release-quality-gate`; run the live release gate locally or in a maintainer-controlled environment when provider credentials are available.
 - GitHub Release body is sourced from `release-notes/vX.Y.Z.md` in the tagged commit. Keep the filename aligned with the version/tag exactly.
-- Use `bun run scripts/release.ts <version>` to cut a desktop release. The script updates version files, refreshes `desktop/src-tauri/Cargo.lock`, requires the matching `release-notes/vX.Y.Z.md`, commits it, and creates the annotated tag.
-- The normal release push is `git push origin main --tags`. If the tag, app version, or release-notes filename do not match, the workflow is designed to fail fast instead of publishing the wrong release.
+- Use `bun run scripts/release.ts <version>` only when intentionally preparing a Desktop release. The script updates version files, refreshes `desktop/src-tauri/Cargo.lock`, requires the matching `release-notes/vX.Y.Z.md`, commits it, and creates the annotated tag.
+- The normal code push is `git push origin main`. Do not push tags or run the Desktop release workflow unless the maintainer explicitly asks for packaged Desktop artifacts.
 - For local macOS test packaging, `desktop/scripts/build-macos-arm64.sh` is the canonical Apple Silicon build entrypoint, and outputs land under `desktop/build-artifacts/macos-arm64/`.
 
 ## Docs Workflow Notes
