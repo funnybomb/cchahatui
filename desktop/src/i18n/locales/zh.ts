@@ -1334,6 +1334,7 @@ export const zh: Record<TranslationKey, string> = {
   'app.serverFailedHint': '反馈这个问题时，请把这块诊断信息截图一起发到 issue 里。',
   'app.startupError': '启动错误',
   'app.serverLogs': '服务日志',
+  'app.recoveryHints': '修复提示',
   'app.copyDiagnostics': '复制诊断信息',
   'app.copiedDiagnostics': '已复制',
   'app.launching': '正在启动本地工作区...',

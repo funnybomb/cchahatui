@@ -315,12 +315,30 @@ function getBrowserServerUrlCandidates({
 }) {
   if (hasExplicitRequest) return [requestedUrl]
 
-  return [
-    requestedUrl,
-    normalizeServerUrl(fallbackUrl),
-  ].filter((url, index, urls): url is string => (
+  const normalizedFallback = normalizeServerUrl(fallbackUrl)
+  const candidates = shouldPreferDefaultLocalServer(requestedUrl, normalizedFallback)
+    ? [normalizedFallback, requestedUrl]
+    : [requestedUrl, normalizedFallback]
+
+  return candidates.filter((url, index, urls): url is string => (
     Boolean(url) && urls.indexOf(url) === index
   ))
+}
+
+function shouldPreferDefaultLocalServer(requestedUrl: string, fallbackUrl: string | null) {
+  if (!fallbackUrl || requestedUrl === fallbackUrl) return false
+
+  try {
+    const requested = new URL(requestedUrl)
+    const fallback = new URL(fallbackUrl)
+    return (
+      isLoopbackHostname(requested.hostname) &&
+      isLoopbackHostname(fallback.hostname) &&
+      requested.port !== fallback.port
+    )
+  } catch {
+    return false
+  }
 }
 
 export function isLoopbackHostname(hostname: string) {

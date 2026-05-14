@@ -25,6 +25,23 @@ export function splitStartupError(error: string) {
   }
 }
 
+export function getStartupRecoveryHints(error: string) {
+  const hints = [
+    'SERVER_PORT=3456 bun run src/server/index.ts',
+    'cd desktop && ./node_modules/.bin/vite --host 127.0.0.1 --clearScreen false',
+    'curl -fsS http://127.0.0.1:3456/health',
+  ]
+
+  if (/non-JSON response|1431\/health|vite/i.test(error)) {
+    return [
+      'The browser app is probably pointed at the frontend dev server instead of the backend API.',
+      ...hints,
+    ]
+  }
+
+  return hints
+}
+
 type StartupErrorViewProps = {
   error: string
 }
@@ -32,6 +49,7 @@ type StartupErrorViewProps = {
 export function StartupErrorView({ error }: StartupErrorViewProps) {
   const t = useTranslation()
   const { message, logs, diagnostics } = useMemo(() => splitStartupError(error), [error])
+  const recoveryHints = useMemo(() => getStartupRecoveryHints(error), [error])
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -72,6 +90,17 @@ export function StartupErrorView({ error }: StartupErrorViewProps) {
               </pre>
             </div>
           ) : null}
+
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <div className="text-xs font-medium uppercase text-[var(--color-text-tertiary)]">
+              {t('app.recoveryHints')}
+            </div>
+            <ul className="mt-2 space-y-1 text-xs text-[var(--color-text-secondary)]">
+              {recoveryHints.map((hint) => (
+                <li key={hint} className="font-mono">{hint}</li>
+              ))}
+            </ul>
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
-import { splitStartupError, StartupErrorView } from './StartupErrorView'
+import { getStartupRecoveryHints, splitStartupError, StartupErrorView } from './StartupErrorView'
 
 describe('splitStartupError', () => {
   it('separates the timeout message from captured sidecar logs', () => {
@@ -15,6 +15,22 @@ describe('splitStartupError', () => {
     )
     expect(result.logs).toContain('[stderr] failed to bind')
     expect(result.diagnostics).toContain('Recent server logs:')
+  })
+})
+
+describe('getStartupRecoveryHints', () => {
+  it('adds a wrong-port hint for frontend healthcheck failures', () => {
+    expect(getStartupRecoveryHints('Server healthcheck failed: non-JSON response from http://127.0.0.1:1431/health')[0]).toContain(
+      'frontend dev server instead of the backend API',
+    )
+  })
+
+  it('keeps concrete local commands for generic startup failures', () => {
+    expect(getStartupRecoveryHints('desktop server startup failed')).toEqual([
+      'SERVER_PORT=3456 bun run src/server/index.ts',
+      'cd desktop && ./node_modules/.bin/vite --host 127.0.0.1 --clearScreen false',
+      'curl -fsS http://127.0.0.1:3456/health',
+    ])
   })
 })
 
@@ -33,6 +49,8 @@ describe('StartupErrorView', () => {
     expect(screen.getByText('本地服务启动失败')).toBeInTheDocument()
     expect(screen.getByText('startup failed')).toBeInTheDocument()
     expect(screen.getByText('[stderr] boom')).toBeInTheDocument()
+    expect(screen.getByText('修复提示')).toBeInTheDocument()
+    expect(screen.getByText('SERVER_PORT=3456 bun run src/server/index.ts')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '复制诊断信息' }))
 

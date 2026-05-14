@@ -1332,6 +1332,7 @@ export const en = {
   'app.serverFailedHint': 'Please include a screenshot of this diagnostic panel when reporting the issue.',
   'app.startupError': 'Startup error',
   'app.serverLogs': 'Server logs',
+  'app.recoveryHints': 'Recovery hints',
   'app.copyDiagnostics': 'Copy diagnostics',
   'app.copiedDiagnostics': 'Copied',
   'app.launching': 'Launching local workspace...',
