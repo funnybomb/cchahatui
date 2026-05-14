@@ -60,4 +60,27 @@ describe('feature quality contract', () => {
     expect(instructions).toContain('E2E or agent-browser smoke')
     expect(instructions).toContain('include changed files, tests added, coverage report path')
   })
+
+  test('keeps public issue templates pointed at cchahatui support paths', () => {
+    const bugReport = readFileSync('.github/ISSUE_TEMPLATE/bug_report.md', 'utf8')
+    const question = readFileSync('.github/ISSUE_TEMPLATE/question.md', 'utf8')
+    const combined = `${bugReport}\n${question}`
+
+    expect(combined).not.toContain('github.com/NanmiCoder/cc-haha')
+    expect(combined).toContain('github.com/funnybomb/cchahatui/issues')
+    expect(combined).toContain('github.com/funnybomb/cchahatui/blob/main/docs/guide/faq.md')
+    expect(question).toContain('github.com/funnybomb/cchahatui/blob/main/docs/guide/third-party-models.md')
+    expect(combined).toContain('DeepSeek 官方')
+  })
+
+  test('keeps README release guidance version-neutral', () => {
+    const readme = readFileSync('README.md', 'utf8')
+    const englishReadme = readFileSync('README.en.md', 'utf8')
+    const combined = `${readme}\n${englishReadme}`
+
+    expect(combined).toContain('github.com/funnybomb/cchahatui/releases')
+    expect(combined).not.toContain('version-v0.3.9')
+    expect(combined).not.toContain('releases/tag/v0.3.9')
+    expect(readme).not.toContain('下载 `v0.3.9`')
+  })
 })

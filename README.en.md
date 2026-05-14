@@ -7,7 +7,6 @@
 <div align="center">
 
 [![Release](https://img.shields.io/github/v/release/funnybomb/cchahatui?label=release)](https://github.com/funnybomb/cchahatui/releases)
-[![Version](https://img.shields.io/badge/version-v0.3.9-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.3.9)
 [![Stars](https://img.shields.io/github/stars/funnybomb/cchahatui?style=social)](https://github.com/funnybomb/cchahatui/stargazers)
 [![Desktop](https://img.shields.io/badge/desktop-macOS%20%7C%20Windows-2ea44f)](#install-the-desktop-app)
 [![DeepSeek](https://img.shields.io/badge/default-DeepSeek%20V4-1f6feb)](#deepseek-first)
@@ -94,6 +93,23 @@ cchahatui brings sessions, multi-project navigation, branch / Worktree controls,
 
 ---
 
+## Run the Web App from Source
+
+For local development, run the web app first. This does not package Desktop or build a DMG. Use two terminals:
+
+```bash
+bun install
+SERVER_PORT=3456 bun run src/server/index.ts
+```
+
+```bash
+cd desktop
+bun install
+bun run dev
+```
+
+Then open `http://127.0.0.1:1431/`.
+
 ## Install the Desktop App
 
 1. Download the macOS or Windows desktop installer from [Releases](https://github.com/funnybomb/cchahatui/releases).
@@ -111,6 +127,15 @@ cp .env.example .env
 ```
 
 See [environment variables](docs/en/guide/env-vars.md) and [global usage](docs/en/guide/global-usage.md) for more configuration options.
+
+## Desktop Release Builds
+
+Normal local web development does not need Desktop packaging. Only release maintainers should build local Desktop artifacts, and only when a packaged Desktop release is explicitly intended:
+
+```bash
+cd desktop
+bun run build:macos-arm64
+```
 
 ---
 

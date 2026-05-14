@@ -9,9 +9,9 @@ assignees: ''
 ## 提交前确认
 <!-- 请确认以下事项 -->
 
-- [ ] 我已经阅读了 [README 常见问题](https://github.com/NanmiCoder/cc-haha#常见问题)
-- [ ] 我已经阅读了[第三方模型使用指南](https://github.com/NanmiCoder/cc-haha/blob/main/docs/guide/third-party-models.md)（如使用第三方 provider）
-- [ ] 我已经搜索过[现有 issues](https://github.com/NanmiCoder/cc-haha/issues)，确认没有重复问题
+- [ ] 我已经阅读了 [FAQ](https://github.com/funnybomb/cchahatui/blob/main/docs/guide/faq.md)
+- [ ] 我已经阅读了[第三方模型使用指南](https://github.com/funnybomb/cchahatui/blob/main/docs/guide/third-party-models.md)（如使用第三方 provider）
+- [ ] 我已经搜索过[现有 issues](https://github.com/funnybomb/cchahatui/issues)，确认没有重复问题
 - [ ] 我已经隐藏截图和日志中的 API Key、Token、Cookie 等敏感信息
 
 ## 问题描述
@@ -24,7 +24,7 @@ assignees: ''
 - 使用方式: 桌面端 / CLI / 其他:
 - 操作系统: Windows / macOS / Linux:
 - 系统版本: 例如 Windows 11 23H2 / macOS 15.4:
-- 桌面端版本: 例如 v0.1.8（设置页 -> 关于 中可查看）:
+- 桌面端版本: 例如 v0.3.x（设置页 -> 关于 中可查看）:
 - 安装来源: GitHub Release / 源码本地构建 / 其他:
 - Bun 版本（CLI 问题填写，`bun --version`）:
 - Node 版本（CLI 问题填写，`node --version`）:
@@ -33,7 +33,7 @@ assignees: ''
 <!-- 描述你在使用哪个功能时遇到的问题 -->
 
 - 使用功能: 例如会话对话 / Provider 配置 / 模型调用 / MCP / Skills / 远程控制:
-- API 提供商: 例如 Anthropic 官方 / OpenRouter / MiniMax / Kimi / Ollama:
+- API 提供商: 例如 DeepSeek 官方 / OpenAI-compatible / Ollama / Anthropic 官方:
 - 使用的模型:
 
 ## 配置截图

@@ -7,7 +7,6 @@
 <div align="center">
 
 [![Release](https://img.shields.io/github/v/release/funnybomb/cchahatui?label=release)](https://github.com/funnybomb/cchahatui/releases)
-[![Version](https://img.shields.io/badge/version-v0.3.9-2f6f8ff)](https://github.com/funnybomb/cchahatui/releases/tag/v0.3.9)
 [![Stars](https://img.shields.io/github/stars/funnybomb/cchahatui?style=social)](https://github.com/funnybomb/cchahatui/stargazers)
 [![Desktop](https://img.shields.io/badge/desktop-macOS%20%7C%20Windows-2ea44f)](#安装)
 [![DeepSeek](https://img.shields.io/badge/default-DeepSeek%20V4-1f6feb)](#deepseek-first)
@@ -104,7 +103,7 @@ cchahatui 基于两个公开项目进行整合与改造：
 ### 下载桌面端
 
 1. 打开 [Releases](https://github.com/funnybomb/cchahatui/releases)。
-2. 下载 `v0.3.9` 对应的 macOS / Windows 安装包。
+2. 下载最新可用的 macOS / Windows 安装包。
 3. macOS 安装后从 `/Applications/cchahatui.app` 启动。
 4. 首次启动进入设置页，添加 DeepSeek 提供商和 API Key。
 
@@ -118,6 +117,23 @@ cchahatui 基于两个公开项目进行整合与改造：
 
 ## 开发
 
+### 网页端开发（当前推荐）
+
+本地开发优先跑网页端，不需要打包 Desktop 或生成 DMG。开两个终端：
+
+```bash
+bun install
+SERVER_PORT=3456 bun run src/server/index.ts
+```
+
+```bash
+cd desktop
+bun install
+bun run dev
+```
+
+然后打开 `http://127.0.0.1:1431/`。
+
 ### 桌面端开发
 
 ```bash
@@ -127,7 +143,9 @@ bun install
 bun run tauri dev
 ```
 
-### 构建 macOS
+### Desktop 发布包（仅维护者发布时）
+
+普通开发和网页端验证不需要构建 Desktop 包。只有明确准备 Desktop 发布时才运行本地打包命令：
 
 ```bash
 cd desktop
