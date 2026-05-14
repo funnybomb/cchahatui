@@ -6,7 +6,6 @@
  *   POST /api/computer-use/setup   — 创建 venv 并安装依赖
  */
 
-import { homedir } from 'os'
 import { join } from 'path'
 import { access, readFile, mkdir, writeFile, rm } from 'fs/promises'
 import { createHash } from 'crypto'
@@ -21,6 +20,7 @@ import {
   normalizePythonPath,
   saveStoredComputerUseConfig,
 } from '../../utils/computerUse/preauthorizedConfig.js'
+import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
 // Embed helper scripts at compile time so they're available in bundled mode
 // @ts-ignore — Bun text import
 import MAC_HELPER_CONTENT from '../../../runtime/mac_helper.py' with { type: 'text' }
@@ -34,16 +34,27 @@ import REQUIREMENTS_WIN32 from '../../../runtime/requirements-win.txt' with { ty
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '../../..')
 const devRuntimeRoot = join(projectRoot, 'runtime')
-const claudeHome = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')
-const runtimeStateRoot = join(claudeHome, '.runtime')
-const venvRoot = join(runtimeStateRoot, 'venv')
-const installStampPath = join(runtimeStateRoot, 'requirements.sha256')
-// 记录上次创建 venv 时所用的 config.pythonPath 原值。读取该文件来判断当前
-// venv 是否仍与最新的自定义路径配置一致。
-const baseInterpreterMarkerPath = join(runtimeStateRoot, 'venv-base-interpreter.txt')
 
 const isWindows = process.platform === 'win32'
 const REQUIREMENTS_CONTENT = isWindows ? REQUIREMENTS_WIN32 : REQUIREMENTS_DARWIN
+
+function getRuntimeStateRoot(): string {
+  return join(getClaudeConfigHomeDir(), '.runtime')
+}
+
+function getVenvRoot(): string {
+  return join(getRuntimeStateRoot(), 'venv')
+}
+
+function getInstallStampPath(): string {
+  return join(getRuntimeStateRoot(), 'requirements.sha256')
+}
+
+// 记录上次创建 venv 时所用的 config.pythonPath 原值。读取该文件来判断当前
+// venv 是否仍与最新的自定义路径配置一致。
+function getBaseInterpreterMarkerPath(): string {
+  return join(getRuntimeStateRoot(), 'venv-base-interpreter.txt')
+}
 
 function getPythonCommandEnv(): Record<string, string> | undefined {
   if (!isWindows) return undefined
@@ -60,7 +71,7 @@ const PIP_TRUSTED_HOST = 'pypi.tuna.tsinghua.edu.cn'
 
 // Paths that resolve correctly in both dev and bundled modes
 function getRequirementsPath(): string {
-  return join(runtimeStateRoot, 'requirements.txt')
+  return join(getRuntimeStateRoot(), 'requirements.txt')
 }
 
 function getHelperFileName(): string {
@@ -68,7 +79,7 @@ function getHelperFileName(): string {
 }
 
 function getHelperPath(): string {
-  return join(runtimeStateRoot, getHelperFileName())
+  return join(getRuntimeStateRoot(), getHelperFileName())
 }
 
 async function pathExists(target: string): Promise<boolean> {
@@ -99,7 +110,7 @@ async function venvBaseInterpreterMatches(
 ): Promise<boolean> {
   const current = (currentCustomPath ?? '').trim()
   try {
-    const recorded = (await readFile(baseInterpreterMarkerPath, 'utf8')).trim()
+    const recorded = (await readFile(getBaseInterpreterMarkerPath(), 'utf8')).trim()
     return recorded === current
   } catch {
     return current === ''
@@ -129,12 +140,13 @@ async function runCommand(
 
 /**
  * Ensure runtime source files (requirements.txt, mac_helper.py) exist in
- * ~/.claude/.runtime/. In dev mode they are copied from the project's
+ * cchahatui runtime state dir. In dev mode they are copied from the project's
  * runtime/ directory; in bundled mode requirements.txt is written from the
  * embedded constant and mac_helper.py is copied from the project dir (if
  * available) or skipped (it will already have been extracted on a prior run).
  */
 async function ensureRuntimeFiles(): Promise<void> {
+  const runtimeStateRoot = getRuntimeStateRoot()
   await mkdir(runtimeStateRoot, { recursive: true })
 
   // requirements.txt — always write from embedded constant (authoritative)
@@ -172,6 +184,7 @@ type EnvStatus = {
 async function checkStatus(): Promise<EnvStatus> {
   const platform = process.platform
   const supported = platform === 'darwin' || platform === 'win32'
+  const venvRoot = getVenvRoot()
 
   // Check venv — different paths on Windows vs Unix
   const venvPython = isWindows
@@ -206,7 +219,7 @@ async function checkStatus(): Promise<EnvStatus> {
     try {
       const requirements = await readFile(reqPath, 'utf8')
       const digest = createHash('sha256').update(requirements).digest('hex')
-      const stamp = (await readFile(installStampPath, 'utf8')).trim()
+      const stamp = (await readFile(getInstallStampPath(), 'utf8')).trim()
       depsInstalled = stamp === digest
     } catch {
       depsInstalled = false
@@ -258,6 +271,9 @@ type SetupResult = {
 
 async function runSetup(): Promise<SetupResult> {
   const steps: SetupResult['steps'] = []
+  const venvRoot = getVenvRoot()
+  const installStampPath = getInstallStampPath()
+  const baseInterpreterMarkerPath = getBaseInterpreterMarkerPath()
 
   const venvPython = isWindows
     ? join(venvRoot, 'Scripts', 'python.exe')
@@ -475,6 +491,7 @@ async function saveConfig(config: ComputerUseConfig): Promise<void> {
 
 async function listInstalledApps(): Promise<{ bundleId: string; displayName: string; path: string }[]> {
   const helperPath = getHelperPath()
+  const venvRoot = getVenvRoot()
   const pythonBin = isWindows
     ? join(venvRoot, 'Scripts', 'python.exe')
     : join(venvRoot, 'bin', 'python3')

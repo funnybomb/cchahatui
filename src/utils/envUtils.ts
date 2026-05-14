@@ -6,24 +6,70 @@ const CCHAHATUI_PROJECT_CONFIG_DIR_ENV = 'CCHAHATUI_PROJECT_CONFIG_DIR'
 const CCHAHATUI_APP_NAME = 'cchahatui'
 const CCHAHATUI_APP_CONFIG_DIR_NAME = 'config'
 
-// Memoized: 150+ callers, many on hot paths. Keyed off CLAUDE_CONFIG_DIR so
-// tests that change the env var get a fresh value without explicit cache.clear.
+function isSharedClaudeConfigDir(configDir: string): boolean {
+  return normalize(configDir) === normalize(join(homedir(), '.claude'))
+}
+
+function getDefaultCchahatuiConfigHomeDir(): string {
+  if (process.platform === 'darwin') {
+    return join(
+      homedir(),
+      'Library',
+      'Application Support',
+      CCHAHATUI_APP_NAME,
+      CCHAHATUI_APP_CONFIG_DIR_NAME,
+    )
+  }
+
+  if (process.platform === 'win32') {
+    return join(
+      process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'),
+      CCHAHATUI_APP_NAME,
+      CCHAHATUI_APP_CONFIG_DIR_NAME,
+    )
+  }
+
+  return join(
+    process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+    CCHAHATUI_APP_NAME,
+    CCHAHATUI_APP_CONFIG_DIR_NAME,
+  )
+}
+
+// Memoized: 150+ callers, many on hot paths. Keyed off relevant env vars so
+// tests that change config paths get a fresh value without explicit cache.clear.
 export const getClaudeConfigHomeDir = memoize(
   (): string => {
-    return (
-      process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')
-    ).normalize('NFC')
+    const projectConfigDir = process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
+    if (projectConfigDir && !isSharedClaudeConfigDir(projectConfigDir)) {
+      return projectConfigDir.normalize('NFC')
+    }
+
+    const explicitClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR
+    if (
+      explicitClaudeConfigDir &&
+      !isSharedClaudeConfigDir(explicitClaudeConfigDir)
+    ) {
+      return explicitClaudeConfigDir.normalize('NFC')
+    }
+
+    return getDefaultCchahatuiConfigHomeDir().normalize('NFC')
   },
-  () => process.env.CLAUDE_CONFIG_DIR,
+  () => [
+    process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] ?? '',
+    process.env.CLAUDE_CONFIG_DIR ?? '',
+    process.env.HOME ?? '',
+    process.env.USERPROFILE ?? '',
+    process.env.APPDATA ?? '',
+    process.env.XDG_CONFIG_HOME ?? '',
+    process.platform,
+  ].join('\0'),
 )
 
 export function getTeamsDir(): string {
   const configured =
     process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] ?? process.env.CLAUDE_CONFIG_DIR
-  if (
-    configured &&
-    normalize(configured) !== normalize(join(homedir(), '.claude'))
-  ) {
+  if (configured && !isSharedClaudeConfigDir(configured)) {
     return join(configured, 'teams')
   }
 

@@ -48,13 +48,13 @@ function getPluginsDirectoryName(): string {
  *
  * Priority:
  * 1. CLAUDE_CODE_PLUGIN_CACHE_DIR env var (explicit override)
- * 2. Default: ~/.claude/plugins or ~/.claude/cowork_plugins
+ * 2. Default: cchahatui user config plugins/ or cowork_plugins/
  */
 export function getPluginsDirectory(): string {
   // expandTilde: when CLAUDE_CODE_PLUGIN_CACHE_DIR is set via settings.json
   // `env` (not shell), ~ is not expanded by the shell. Without this, a value
-  // like "~/.claude/plugins" becomes a literal `~` directory created in the
-  // cwd of every project (gh-30794 / CC-212).
+  // like "~/Library/Application Support/cchahatui/config/plugins" becomes a
+  // literal `~` directory created in the cwd of every project (gh-30794 / CC-212).
   const envOverride = process.env.CLAUDE_CODE_PLUGIN_CACHE_DIR
   if (envOverride) {
     return expandTilde(envOverride)

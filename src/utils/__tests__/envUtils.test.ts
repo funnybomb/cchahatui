@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { getTeamsDir } from '../envUtils.js'
+import { getClaudeConfigHomeDir, getTeamsDir } from '../envUtils.js'
 
 describe('envUtils project content helpers', () => {
   let originalProjectConfigDir: string | undefined
@@ -45,16 +45,26 @@ describe('envUtils project content helpers', () => {
     expect(getTeamsDir()).toBe('/tmp/cchahatui-project-data/teams')
   })
 
+  test('uses explicit project content config for Claude-compatible user config', () => {
+    process.env.CCHAHATUI_PROJECT_CONFIG_DIR = '/tmp/cchahatui-project-data'
+    process.env.CLAUDE_CONFIG_DIR = join(homedir(), '.claude')
+
+    expect(getClaudeConfigHomeDir()).toBe('/tmp/cchahatui-project-data')
+  })
+
   test('keeps tests and custom runs with explicit non-shared CLAUDE_CONFIG_DIR', () => {
     process.env.CLAUDE_CONFIG_DIR = '/tmp/custom-config'
 
     expect(getTeamsDir()).toBe('/tmp/custom-config/teams')
+    expect(getClaudeConfigHomeDir()).toBe('/tmp/custom-config')
   })
 
   test('does not put teams in shared ~/.claude by default', () => {
     process.env.CLAUDE_CONFIG_DIR = join(homedir(), '.claude')
 
     expect(getTeamsDir()).toContain(join('cchahatui', 'config', 'teams'))
+    expect(getClaudeConfigHomeDir()).toContain(join('cchahatui', 'config'))
+    expect(getClaudeConfigHomeDir()).not.toBe(join(homedir(), '.claude'))
   })
 
   test('uses APPDATA for default Windows team storage', () => {
@@ -64,10 +74,24 @@ describe('envUtils project content helpers', () => {
     expect(getTeamsDir()).toBe(join('D:\\AppData\\Roaming', 'cchahatui', 'config', 'teams'))
   })
 
+  test('uses APPDATA for default Windows Claude-compatible user config', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    process.env.APPDATA = 'D:\\AppData\\Roaming'
+
+    expect(getClaudeConfigHomeDir()).toBe(join('D:\\AppData\\Roaming', 'cchahatui', 'config'))
+  })
+
   test('uses XDG_CONFIG_HOME for default Linux team storage', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' })
     process.env.XDG_CONFIG_HOME = '/tmp/xdg'
 
     expect(getTeamsDir()).toBe(join('/tmp/xdg', 'cchahatui', 'config', 'teams'))
+  })
+
+  test('uses XDG_CONFIG_HOME for default Linux Claude-compatible user config', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' })
+    process.env.XDG_CONFIG_HOME = '/tmp/xdg'
+
+    expect(getClaudeConfigHomeDir()).toBe(join('/tmp/xdg', 'cchahatui', 'config'))
   })
 })

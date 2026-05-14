@@ -9,6 +9,7 @@ let tmpHome: string
 let originalHome: string | undefined
 let originalUserProfile: string | undefined
 let originalClaudeConfigDir: string | undefined
+let originalProjectConfigDir: string | undefined
 let originalCwdState: string
 
 function makeRequest(urlStr: string): { req: Request; url: URL; segments: string[] } {
@@ -33,11 +34,13 @@ describe('Skills API', () => {
     originalHome = process.env.HOME
     originalUserProfile = process.env.USERPROFILE
     originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR
+    originalProjectConfigDir = process.env.CCHAHATUI_PROJECT_CONFIG_DIR
     originalCwdState = getCwdState()
 
     process.env.HOME = tmpHome
     process.env.USERPROFILE = tmpHome
-    process.env.CLAUDE_CONFIG_DIR = path.join(tmpHome, '.claude')
+    delete process.env.CCHAHATUI_PROJECT_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = path.join(tmpHome, 'cchahatui-config')
     setCwdState(tmpHome)
   })
 
@@ -60,12 +63,18 @@ describe('Skills API', () => {
       process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir
     }
 
+    if (originalProjectConfigDir === undefined) {
+      delete process.env.CCHAHATUI_PROJECT_CONFIG_DIR
+    } else {
+      process.env.CCHAHATUI_PROJECT_CONFIG_DIR = originalProjectConfigDir
+    }
+
     setCwdState(originalCwdState)
     await fs.rm(tmpHome, { recursive: true, force: true })
   })
 
   it('lists user and project skills for the requested cwd', async () => {
-    const userSkillsRoot = path.join(tmpHome, '.claude', 'skills')
+    const userSkillsRoot = path.join(tmpHome, 'cchahatui-config', 'skills')
     const projectRoot = path.join(tmpHome, 'workspace')
     const cwd = path.join(projectRoot, 'packages', 'app')
 
@@ -87,6 +96,33 @@ describe('Skills API', () => {
     const body = await res.json() as { skills: Array<{ name: string; source: string }> }
     expect(body.skills).toContainEqual(expect.objectContaining({ name: 'user-skill', source: 'user' }))
     expect(body.skills).toContainEqual(expect.objectContaining({ name: 'project-skill', source: 'project' }))
+  })
+
+  it('prefers the isolated cchahatui config over the Claude-compatible config', async () => {
+    process.env.CCHAHATUI_PROJECT_CONFIG_DIR = path.join(tmpHome, 'isolated-config')
+    process.env.CLAUDE_CONFIG_DIR = path.join(tmpHome, '.claude')
+    await writeSkill(
+      path.join(tmpHome, '.claude', 'skills'),
+      'shared-claude-skill',
+      ['---', 'description: Shared scope', '---', '', '# Shared skill'].join('\n'),
+    )
+    await writeSkill(
+      path.join(tmpHome, 'isolated-config', 'skills'),
+      'isolated-skill',
+      ['---', 'description: Isolated scope', '---', '', '# Isolated skill'].join('\n'),
+    )
+
+    const { req, url, segments } = makeRequest('/api/skills')
+    const res = await handleSkillsApi(req, url, segments)
+
+    expect(res.status).toBe(200)
+    const body = await res.json() as { skills: Array<{ name: string; source: string }> }
+    expect(body.skills).toContainEqual(
+      expect.objectContaining({ name: 'isolated-skill', source: 'user' }),
+    )
+    expect(body.skills).not.toContainEqual(
+      expect.objectContaining({ name: 'shared-claude-skill', source: 'user' }),
+    )
   })
 
   it('resolves project skill details from the nearest project skills directory', async () => {

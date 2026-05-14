@@ -169,6 +169,15 @@ describe('Settings > Skills tab', () => {
     expect(fetchSkills).toHaveBeenCalledWith('/workspace/project')
   })
 
+  it('describes isolated cchahatui skill storage in the empty state', () => {
+    render(<Settings />)
+    switchToSkillsTab()
+
+    expect(screen.getByText('No skills installed')).toBeInTheDocument()
+    expect(screen.getByText(/Desktop reads skills from the isolated cchahatui user config directory/)).toBeInTheDocument()
+    expect(screen.queryByText(/~\/\.claude\/skills/)).not.toBeInTheDocument()
+  })
+
   it('opens skill detail with metadata cards and parsed markdown body', () => {
     useSkillStore.setState({
       selectedSkill: {
