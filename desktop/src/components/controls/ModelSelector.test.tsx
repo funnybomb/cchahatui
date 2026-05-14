@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 import { ModelSelector } from './ModelSelector'
@@ -23,6 +23,7 @@ async function clickByRole(name: RegExp | string) {
 
 afterEach(() => {
   cleanup()
+  window.localStorage.clear()
   useSettingsStore.setState(useSettingsStore.getInitialState(), true)
   useProviderStore.setState(useProviderStore.getInitialState(), true)
   useSessionRuntimeStore.setState(useSessionRuntimeStore.getInitialState(), true)
@@ -102,7 +103,7 @@ describe('ModelSelector', () => {
 
     render(<ModelSelector runtimeKey="session-1" />)
 
-    await clickByRole(/alpha/i)
+    await clickByRole(/provider-main/i)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /provider-fast/ }))
       await Promise.resolve()
@@ -115,6 +116,59 @@ describe('ModelSelector', () => {
     expect(setSessionRuntime).toHaveBeenCalledWith('session-1', {
       providerId: 'provider-a',
       modelId: 'provider-fast',
+    })
+  })
+
+  it('repairs stale provider runtime selections to the provider main model', async () => {
+    const setSessionRuntime = vi.fn()
+    useSettingsStore.setState({
+      locale: 'en',
+      availableModels: [],
+      currentModel: { id: 'qw36un', name: 'qw36un', description: '', context: '' },
+      activeProviderName: 'qwen',
+    })
+    useProviderStore.setState({
+      providers: [{
+        id: 'qwen-provider',
+        presetId: 'custom',
+        name: 'qwen',
+        apiKey: '***',
+        baseUrl: 'https://api.example.com',
+        apiFormat: 'anthropic',
+        models: {
+          main: 'qwen3.6',
+          haiku: 'qwen3.6',
+          sonnet: 'qwen3.6',
+          opus: '',
+        },
+      }],
+      activeId: 'qwen-provider',
+      hasLoadedProviders: true,
+      isLoading: true,
+    })
+    useChatStore.setState({
+      setSessionRuntime,
+    } as Partial<ReturnType<typeof useChatStore.getState>>)
+    act(() => {
+      useSessionRuntimeStore.getState().setSelection('session-1', {
+        providerId: 'qwen-provider',
+        modelId: 'qw36un',
+      })
+    })
+
+    render(<ModelSelector runtimeKey="session-1" />)
+
+    expect(screen.getByRole('button', { name: /qwen3\.6/i })).toBeInTheDocument()
+    expect(screen.queryByText('qw36un')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(useSessionRuntimeStore.getState().selections['session-1']).toEqual({
+        providerId: 'qwen-provider',
+        modelId: 'qwen3.6',
+      })
+    })
+    expect(setSessionRuntime).toHaveBeenCalledWith('session-1', {
+      providerId: 'qwen-provider',
+      modelId: 'qwen3.6',
     })
   })
 

@@ -124,6 +124,41 @@ function resolveDefaultRuntimeSelection(
   }
 }
 
+function getChoiceDefaultSelection(choice: ProviderChoice | null): RuntimeSelection | null {
+  const model = choice?.models[0]
+  return model
+    ? { providerId: choice.providerId, modelId: model.id }
+    : null
+}
+
+function areRuntimeSelectionsEqual(
+  left: RuntimeSelection | null | undefined,
+  right: RuntimeSelection | null | undefined,
+): boolean {
+  return left?.providerId === right?.providerId && left?.modelId === right?.modelId
+}
+
+function normalizeRuntimeSelection(
+  selection: RuntimeSelection,
+  providerChoices: ProviderChoice[],
+): RuntimeSelection {
+  const selectedChoice = providerChoices.find((choice) => choice.providerId === selection.providerId) ?? null
+  if (!selectedChoice && selection.providerId !== null) {
+    return selection
+  }
+  if (selectedChoice?.models.some((model) => model.id === selection.modelId)) {
+    return selection
+  }
+
+  const fallbackChoice = selectedChoice?.models.length
+    ? selectedChoice
+    : providerChoices.find((choice) => choice.isDefault && choice.models.length > 0)
+      ?? providerChoices.find((choice) => choice.models.length > 0)
+      ?? null
+
+  return getChoiceDefaultSelection(fallbackChoice) ?? selection
+}
+
 export function ModelSelector({
   value,
   onChange,
@@ -273,14 +308,53 @@ export function ModelSelector({
     ? availableModels.find((model) => model.id === value) || null
     : storeModel
 
-  const activeRuntimeSelection = isRuntimeScoped
-    ? controlledRuntimeSelection ?? runtimeSelection ?? resolveDefaultRuntimeSelection(
-      activeId,
-      activeProviderName,
-      providers,
-      storeModel?.id,
-    )
+  const defaultRuntimeSelection = useMemo(
+    () => isRuntimeScoped
+      ? resolveDefaultRuntimeSelection(
+        activeId,
+        activeProviderName,
+        providers,
+        storeModel?.id,
+      )
+      : null,
+    [activeId, activeProviderName, isRuntimeScoped, providers, storeModel?.id],
+  )
+
+  const rawRuntimeSelection = isRuntimeScoped
+    ? controlledRuntimeSelection ?? runtimeSelection ?? defaultRuntimeSelection
     : null
+
+  const activeRuntimeSelection = useMemo(
+    () => rawRuntimeSelection
+      ? normalizeRuntimeSelection(rawRuntimeSelection, providerChoices)
+      : null,
+    [providerChoices, rawRuntimeSelection],
+  )
+
+  useEffect(() => {
+    if (
+      !isRuntimeScoped ||
+      !rawRuntimeSelection ||
+      !activeRuntimeSelection ||
+      areRuntimeSelectionsEqual(rawRuntimeSelection, activeRuntimeSelection)
+    ) {
+      return
+    }
+
+    onRuntimeSelectionChange?.(activeRuntimeSelection)
+    if (runtimeKey) {
+      useSessionRuntimeStore.getState().setSelection(runtimeKey, activeRuntimeSelection)
+      if (runtimeKey !== DRAFT_RUNTIME_SELECTION_KEY) {
+        useChatStore.getState().setSessionRuntime(runtimeKey, activeRuntimeSelection)
+      }
+    }
+  }, [
+    activeRuntimeSelection,
+    isRuntimeScoped,
+    onRuntimeSelectionChange,
+    rawRuntimeSelection,
+    runtimeKey,
+  ])
 
   const selectedProviderChoice = activeRuntimeSelection
     ? providerChoices.find((choice) => choice.providerId === activeRuntimeSelection.providerId) ?? null
@@ -288,16 +362,18 @@ export function ModelSelector({
 
   const selectedRuntimeModel = activeRuntimeSelection
     ? selectedProviderChoice?.models.find((model) => model.id === activeRuntimeSelection.modelId)
-      ?? {
-        id: activeRuntimeSelection.modelId,
-        name: activeRuntimeSelection.modelId,
-        description: '',
-        context: '',
-      }
+      ?? (selectedProviderChoice
+        ? null
+        : {
+            id: activeRuntimeSelection.modelId,
+            name: activeRuntimeSelection.modelId,
+            description: '',
+            context: '',
+          })
     : null
 
   const buttonModelLabel = isRuntimeScoped
-    ? selectedRuntimeModel?.name ?? storeModel?.name ?? t('model.selectModel')
+    ? selectedRuntimeModel?.name ?? t('model.selectModel')
     : selectedModel?.name ?? t('model.selectModel')
   const buttonProviderLabel = isRuntimeScoped
     ? selectedProviderChoice?.providerName ?? activeProviderName ?? t('settings.providers.officialName')

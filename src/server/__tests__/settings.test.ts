@@ -525,6 +525,33 @@ describe('Models API', () => {
     expect(body.model.id).toBe('glm-5-turbo')
   })
 
+  it('GET /api/models/current should fall back when the managed provider model was removed', async () => {
+    const providerSvc = new ProviderService()
+    const provider = await providerSvc.addProvider({
+      presetId: 'custom',
+      name: 'qwen',
+      baseUrl: 'https://api.example.com',
+      apiKey: 'test-key',
+      apiFormat: 'anthropic',
+      models: {
+        main: 'qwen3.6',
+        haiku: 'qwen3.6',
+        sonnet: 'qwen3.6',
+        opus: '',
+      },
+    })
+    await providerSvc.activateProvider(provider.id)
+    await providerSvc.updateManagedSettings({ model: 'qw36un' })
+
+    const { req, url, segments } = makeRequest('GET', '/api/models/current')
+    const res = await handleModelsApi(req, url, segments)
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.model.id).toBe('qwen3.6')
+    expect(body.model.description).toBe('Main model')
+  })
+
   it('PUT /api/models/current should persist to cchahatui managed settings when provider is active', async () => {
     const settingsSvc = new SettingsService()
     const providerSvc = new ProviderService()

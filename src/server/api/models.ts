@@ -228,6 +228,9 @@ async function handleCurrentModel(req: Request): Promise<Response> {
     // Build the full model list: prefer active provider's models, fall back to defaults
     const { providers, activeId } = await providerService.listProviders()
     const activeProvider = activeId ? providers.find((p) => p.id === activeId) : null
+    const availableModels = activeProvider
+      ? buildProviderModelList(activeProvider.models)
+      : getStandaloneModelList()
     const settings = activeProvider
       ? await providerService.getManagedSettings()
       : await settingsService.getUserSettings()
@@ -251,6 +254,15 @@ async function handleCurrentModel(req: Request): Promise<Response> {
         currentModelId = explicitModel || providerEnvModel || activeProvider.models.main
         currentModelName = currentModelId
       }
+
+      if (!availableModels.some((model) => model.id === currentModelId)) {
+        const fallbackModel = availableModels.find((model) => model.id === activeProvider.models.main)
+          ?? availableModels[0]
+        if (fallbackModel) {
+          currentModelId = fallbackModel.id
+          currentModelName = fallbackModel.name
+        }
+      }
     } else {
       // No provider — use settings model with context tier
       currentModelId = explicitModel || envModel || DEFAULT_MODEL
@@ -258,11 +270,6 @@ async function handleCurrentModel(req: Request): Promise<Response> {
     }
 
     const lookupId = contextTier ? `${currentModelId}:${contextTier}` : currentModelId
-
-    // Build available models for name lookup
-    const availableModels = activeProvider
-      ? buildProviderModelList(activeProvider.models)
-      : getStandaloneModelList()
 
     const modelEntry = availableModels.find((m) => m.id === lookupId)
       || availableModels.find((m) => m.id === currentModelId)
