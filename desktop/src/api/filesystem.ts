@@ -28,9 +28,10 @@ export const filesystemApi = {
     return api.get<BrowseResult>(`/api/filesystem/browse?${q}`)
   },
 
-  chooseFolder(title?: string) {
+  chooseFolder(title?: string, defaultPath?: string) {
     const q = new URLSearchParams()
     if (title) q.set('title', title)
+    if (defaultPath) q.set('defaultPath', defaultPath)
     const qs = q.toString()
     return api.post<{ path: string | null }>(
       `/api/filesystem/choose-folder${qs ? `?${qs}` : ''}`,

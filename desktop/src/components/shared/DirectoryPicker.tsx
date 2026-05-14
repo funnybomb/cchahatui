@@ -120,18 +120,26 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
       .catch(() => {})
   }
 
+  const getFolderPickerDefaultPath = () => {
+    const trimmedValue = value.trim()
+    if (trimmedValue) return trimmedValue
+    return projects.find((project) => project.realPath)?.realPath
+  }
+
   const selectNativeFolder = async (): Promise<string | null> => {
+    const defaultPath = getFolderPickerDefaultPath()
     if (isTauriRuntime()) {
       const { open } = await import('@tauri-apps/plugin-dialog')
       const selected = await open({
         directory: true,
         multiple: false,
         title: t('dirPicker.chooseProjectFolder'),
+        ...(defaultPath ? { defaultPath } : {}),
       })
       return typeof selected === 'string' && selected ? selected : null
     }
 
-    const selected = await filesystemApi.chooseFolder(t('dirPicker.chooseProjectFolder'))
+    const selected = await filesystemApi.chooseFolder(t('dirPicker.chooseProjectFolder'), defaultPath)
     return selected.path
   }
 

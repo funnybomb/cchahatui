@@ -221,10 +221,15 @@ export function ProjectFilter({ variant = 'default' }: { variant?: 'default' | '
 
     try {
       const { open: openDialog } = await import('@tauri-apps/plugin-dialog')
+      const defaultPath = selectedProjects
+        .map((projectPath) => optionByPath.get(projectPath)?.realPath)
+        .find((projectPath): projectPath is string => Boolean(projectPath))
+        || projects.find((project) => project.realPath)?.realPath
       const selected = await openDialog({
         directory: true,
         multiple: false,
         title: t('dirPicker.chooseProjectFolder'),
+        ...(defaultPath ? { defaultPath } : {}),
       })
       if (typeof selected === 'string' && selected) {
         await addProjectByPath(selected)

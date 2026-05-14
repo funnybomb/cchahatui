@@ -44,6 +44,32 @@ describe('filesystem API', () => {
     expect(body.entries.some((entry) => entry.name === 'note.txt')).toBe(true)
   })
 
+  it('allows localhost directory browsing outside the home sandbox for project selection', async () => {
+    const rootDir = path.parse(os.homedir()).root
+
+    const res = await handleFilesystemRoute(
+      '/api/filesystem/browse',
+      makeUrl('/api/filesystem/browse', {
+        path: rootDir,
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    const body = await res.json() as { currentPath: string; entries: Array<{ name: string }> }
+    expect(body.currentPath).toBe(path.resolve(rootDir))
+    expect(Array.isArray(body.entries)).toBe(true)
+  })
+
+  it('keeps non-local directory browsing constrained to safe roots', async () => {
+    const rootDir = path.parse(os.homedir()).root
+    const url = new URL('http://192.168.0.2/api/filesystem/browse')
+    url.searchParams.set('path', rootDir)
+
+    const res = await handleFilesystemRoute('/api/filesystem/browse', url)
+
+    expect(res.status).toBe(403)
+  })
+
   it('accepts /private/tmp aliases on macOS for browsing and file serving', async () => {
     if (process.platform !== 'darwin') return
 
@@ -106,6 +132,57 @@ describe('filesystem API', () => {
     await expect(res.json()).resolves.toEqual({ path: '/tmp/project-from-router' })
   })
 
+  it('passes an existing default folder to the native folder chooser', async () => {
+    const defaultDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'claude-folder-default-'))
+    cleanupDirs.add(defaultDir)
+    setNativeFolderChooserForTests(async (_title, defaultPath) => defaultPath ?? null)
+    const url = new URL('http://localhost/api/filesystem/choose-folder')
+    url.searchParams.set('defaultPath', defaultDir)
+
+    const res = await handleFilesystemRoute(
+      '/api/filesystem/choose-folder',
+      url,
+      new Request(url, { method: 'POST' }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ path: defaultDir })
+  })
+
+  it('uses the parent directory when the default picker path is a file', async () => {
+    const defaultDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'claude-folder-file-default-'))
+    cleanupDirs.add(defaultDir)
+    const defaultFile = path.join(defaultDir, 'note.txt')
+    await fsp.writeFile(defaultFile, 'hello')
+    setNativeFolderChooserForTests(async (_title, defaultPath) => defaultPath ?? null)
+    const url = new URL('http://localhost/api/filesystem/choose-folder')
+    url.searchParams.set('defaultPath', defaultFile)
+
+    const res = await handleFilesystemRoute(
+      '/api/filesystem/choose-folder',
+      url,
+      new Request(url, { method: 'POST' }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ path: defaultDir })
+  })
+
+  it('ignores invalid default folder paths instead of failing the native chooser', async () => {
+    setNativeFolderChooserForTests(async (_title, defaultPath) => defaultPath ?? 'no-default')
+    const url = new URL('http://localhost/api/filesystem/choose-folder')
+    url.searchParams.set('defaultPath', path.join(os.tmpdir(), 'missing-folder-for-picker-default'))
+
+    const res = await handleFilesystemRoute(
+      '/api/filesystem/choose-folder',
+      url,
+      new Request(url, { method: 'POST' }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ path: 'no-default' })
+  })
+
   it('rejects non-POST native folder chooser calls', async () => {
     const url = new URL('http://localhost/api/filesystem/choose-folder')
     const res = await handleFilesystemRoute(
@@ -155,6 +232,31 @@ describe('filesystem API', () => {
     await expect(res.json()).resolves.toEqual({ path: '/Users/example/Project' })
     expect(calls[0]?.file).toBe('osascript')
     expect(calls[0]?.args[1]).toContain('Pick \\"Project\\"')
+  })
+
+  it('opens the macOS Finder picker at a default folder when provided', async () => {
+    const defaultDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'claude-macos-default-'))
+    cleanupDirs.add(defaultDir)
+    const calls: Array<{ file: string; args: string[] }> = []
+    setNativeFolderDialogRuntimeForTests({
+      platform: 'darwin',
+      execFile: async (file, args) => {
+        calls.push({ file, args })
+        return { stdout: `${defaultDir}\n`, stderr: '', code: 0 }
+      },
+    })
+    const url = new URL('http://localhost/api/filesystem/choose-folder?title=Pick%20folder')
+    url.searchParams.set('defaultPath', defaultDir)
+
+    const res = await handleFilesystemRoute(
+      '/api/filesystem/choose-folder',
+      url,
+      new Request(url, { method: 'POST' }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(calls[0]?.args[1]).toContain('default location POSIX file')
+    expect(calls[0]?.args[1]).toContain(defaultDir)
   })
 
   it('treats macOS picker cancellation as an empty selection', async () => {
@@ -214,6 +316,31 @@ describe('filesystem API', () => {
     expect(calls[0]?.args.join(' ')).toContain("Owner''s folder")
   })
 
+  it('opens the Windows folder picker at a default folder when provided', async () => {
+    const defaultDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'claude-windows-default-'))
+    cleanupDirs.add(defaultDir)
+    const calls: Array<{ file: string; args: string[] }> = []
+    setNativeFolderDialogRuntimeForTests({
+      platform: 'win32',
+      execFile: async (file, args) => {
+        calls.push({ file, args })
+        return { stdout: `${defaultDir}\r\n`, stderr: '', code: 0 }
+      },
+    })
+    const url = new URL('http://localhost/api/filesystem/choose-folder?title=Pick%20folder')
+    url.searchParams.set('defaultPath', defaultDir)
+
+    const res = await handleFilesystemRoute(
+      '/api/filesystem/choose-folder',
+      url,
+      new Request(url, { method: 'POST' }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(calls[0]?.args.join(' ')).toContain('$dialog.SelectedPath')
+    expect(calls[0]?.args.join(' ')).toContain(defaultDir)
+  })
+
   it('treats Windows picker cancellation as an empty selection', async () => {
     setNativeFolderDialogRuntimeForTests({
       platform: 'win32',
@@ -271,6 +398,33 @@ describe('filesystem API', () => {
     expect(calls[0]).toEqual({
       file: 'zenity',
       args: ['--file-selection', '--directory', '--title', 'Pick folder'],
+    })
+  })
+
+  it('opens Linux folder picker at a default folder when provided', async () => {
+    const defaultDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'claude-linux-default-'))
+    cleanupDirs.add(defaultDir)
+    const calls: Array<{ file: string; args: string[] }> = []
+    setNativeFolderDialogRuntimeForTests({
+      platform: 'linux',
+      execFile: async (file, args) => {
+        calls.push({ file, args })
+        return { stdout: `${defaultDir}\n`, stderr: '', code: 0 }
+      },
+    })
+    const url = new URL('http://localhost/api/filesystem/choose-folder?title=Pick%20folder')
+    url.searchParams.set('defaultPath', defaultDir)
+
+    const res = await handleFilesystemRoute(
+      '/api/filesystem/choose-folder',
+      url,
+      new Request(url, { method: 'POST' }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(calls[0]).toEqual({
+      file: 'zenity',
+      args: ['--file-selection', '--directory', '--title', 'Pick folder', `--filename=${defaultDir}${path.sep}`],
     })
   })
 

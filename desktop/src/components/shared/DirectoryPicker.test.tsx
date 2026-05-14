@@ -173,6 +173,22 @@ describe('DirectoryPicker', () => {
     expect(projectsApi.addProject).toHaveBeenCalledWith('/workspace/native-project')
   })
 
+  it('opens the local native folder picker at the current project path in browser mode', async () => {
+    vi.mocked(sessionsApi.getRecentProjects).mockResolvedValue({ projects: [] })
+    vi.mocked(filesystemApi.chooseFolder).mockResolvedValue({ path: '/workspace/next-project' })
+    const onChange = vi.fn()
+
+    render(<DirectoryPicker value="/workspace/current-project" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /current-project/ }))
+    fireEvent.click(await screen.findByText(/选择其他文件夹|Choose a different folder/))
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith('/workspace/next-project')
+    })
+    expect(filesystemApi.chooseFolder).toHaveBeenCalledWith(expect.any(String), '/workspace/current-project')
+  })
+
   it('uses the Tauri native folder dialog inside the desktop app', async () => {
     desktopRuntimeMock.isTauriRuntime.mockReturnValue(true)
     dialogOpenMock.mockResolvedValue('/workspace/tauri-project')
@@ -193,5 +209,27 @@ describe('DirectoryPicker', () => {
       title: expect.any(String),
     })
     expect(filesystemApi.chooseFolder).not.toHaveBeenCalled()
+  })
+
+  it('opens the Tauri folder dialog at the current project path inside the desktop app', async () => {
+    desktopRuntimeMock.isTauriRuntime.mockReturnValue(true)
+    dialogOpenMock.mockResolvedValue('/workspace/tauri-next')
+    vi.mocked(sessionsApi.getRecentProjects).mockResolvedValue({ projects: [] })
+    const onChange = vi.fn()
+
+    render(<DirectoryPicker value="/workspace/current-project" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /current-project/ }))
+    fireEvent.click(await screen.findByText(/选择其他文件夹|Choose a different folder/))
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith('/workspace/tauri-next')
+    })
+    expect(dialogOpenMock).toHaveBeenCalledWith({
+      directory: true,
+      multiple: false,
+      title: expect.any(String),
+      defaultPath: '/workspace/current-project',
+    })
   })
 })

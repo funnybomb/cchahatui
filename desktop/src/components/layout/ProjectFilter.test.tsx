@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
-const { getRecentProjectsMock, addProjectMock, removeProjectMock, addToastMock } = vi.hoisted(() => ({
+const { getRecentProjectsMock, addProjectMock, removeProjectMock, addToastMock, dialogOpenMock } = vi.hoisted(() => ({
   getRecentProjectsMock: vi.fn(),
   addProjectMock: vi.fn(),
   removeProjectMock: vi.fn(),
   addToastMock: vi.fn(),
+  dialogOpenMock: vi.fn(),
 }))
 
 vi.mock('../../api/sessions', async () => {
@@ -25,6 +26,10 @@ vi.mock('../../api/projects', () => ({
     addProject: addProjectMock,
     removeProject: removeProjectMock,
   },
+}))
+
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  open: dialogOpenMock,
 }))
 
 vi.mock('../../stores/uiStore', async () => {
@@ -71,6 +76,9 @@ describe('ProjectFilter', () => {
     addProjectMock.mockReset()
     removeProjectMock.mockReset()
     addToastMock.mockReset()
+    dialogOpenMock.mockReset()
+    delete (window as unknown as { __TAURI__?: unknown }).__TAURI__
+    delete (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
     useUIStore.setState({ addToast: addToastMock } as Partial<ReturnType<typeof useUIStore.getState>>)
     useSessionStore.setState({
       sessions: [],
@@ -191,6 +199,108 @@ describe('ProjectFilter', () => {
       expect(fetchSessions).toHaveBeenCalled()
       expect(useSessionStore.getState().selectedProjects).toEqual(['/workspace/new-project'])
     })
+  })
+
+  it('opens the desktop project picker at the selected project path', async () => {
+    ;(window as unknown as { __TAURI__?: unknown }).__TAURI__ = {}
+    getRecentProjectsMock
+      .mockResolvedValueOnce({
+        projects: [{
+          projectPath: '/workspace/current',
+          realPath: '/workspace/current',
+          projectName: 'current',
+          isGit: false,
+          repoName: null,
+          branch: null,
+          modifiedAt: '2026-05-01T00:00:00.000Z',
+          sessionCount: 1,
+          saved: true,
+        }],
+      })
+      .mockResolvedValueOnce({
+        projects: [{
+          projectPath: '/workspace/next',
+          realPath: '/workspace/next',
+          projectName: 'next',
+          isGit: false,
+          repoName: null,
+          branch: null,
+          modifiedAt: '2026-05-02T00:00:00.000Z',
+          sessionCount: 0,
+          saved: true,
+        }],
+      })
+    addProjectMock.mockResolvedValue({
+      project: {
+        projectPath: '/workspace/next',
+        realPath: '/workspace/next',
+      },
+    })
+    dialogOpenMock.mockResolvedValue('/workspace/next')
+    const fetchSessions = vi.fn().mockResolvedValue(undefined)
+    useSessionStore.setState({
+      availableProjects: ['/workspace/current'],
+      selectedProjects: ['/workspace/current'],
+      fetchSessions,
+    })
+
+    render(<ProjectFilter />)
+
+    fireEvent.click(screen.getByRole('button', { name: /current/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add project/ })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Add project/ }))
+
+    await waitFor(() => {
+      expect(dialogOpenMock).toHaveBeenCalledWith({
+        directory: true,
+        multiple: false,
+        title: 'dirPicker.chooseProjectFolder',
+        defaultPath: '/workspace/current',
+      })
+      expect(addProjectMock).toHaveBeenCalledWith('/workspace/next')
+    })
+  })
+
+  it('opens the desktop project picker at the most recent project when all projects are selected', async () => {
+    ;(window as unknown as { __TAURI__?: unknown }).__TAURI__ = {}
+    getRecentProjectsMock.mockResolvedValue({
+      projects: [{
+        projectPath: '/workspace/recent',
+        realPath: '/workspace/recent',
+        projectName: 'recent',
+        isGit: false,
+        repoName: null,
+        branch: null,
+        modifiedAt: '2026-05-02T00:00:00.000Z',
+        sessionCount: 1,
+        saved: true,
+      }],
+    })
+    dialogOpenMock.mockResolvedValue(null)
+    useSessionStore.setState({
+      availableProjects: ['/workspace/recent'],
+      selectedProjects: [],
+    })
+
+    render(<ProjectFilter />)
+
+    fireEvent.click(screen.getByRole('button', { name: /All projects/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add project/ })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Add project/ }))
+
+    await waitFor(() => {
+      expect(dialogOpenMock).toHaveBeenCalledWith({
+        directory: true,
+        multiple: false,
+        title: 'dirPicker.chooseProjectFolder',
+        defaultPath: '/workspace/recent',
+      })
+    })
+    expect(addProjectMock).not.toHaveBeenCalled()
   })
 
   it('removes a saved project from the project filter', async () => {

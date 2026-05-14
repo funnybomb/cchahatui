@@ -20,7 +20,7 @@ const IMAGE_MIME_TYPES: Record<string, string> = {
   '.avif': 'image/avif',
 }
 
-type NativeFolderChooser = (title: string) => Promise<string | null>
+type NativeFolderChooser = (title: string, defaultPath?: string) => Promise<string | null>
 type NativeFolderDialogRuntime = {
   platform?: NodeJS.Platform
   execFile?: typeof execFileNoThrow
@@ -93,7 +93,8 @@ async function handleChooseFolder(url: URL, req?: Request): Promise<Response> {
 
   try {
     const title = url.searchParams.get('title') || 'Choose project folder'
-    const selectedPath = await nativeFolderChooser(title)
+    const defaultPath = normalizeDefaultFolderPath(url.searchParams.get('defaultPath') || undefined)
+    const selectedPath = await nativeFolderChooser(title, defaultPath || undefined)
     return json({ path: selectedPath })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -108,22 +109,25 @@ function isLoopbackHost(hostname: string): boolean {
     hostname === '[::1]'
 }
 
-async function chooseFolderWithSystemDialog(title: string): Promise<string | null> {
+async function chooseFolderWithSystemDialog(title: string, defaultPath?: string): Promise<string | null> {
   if (nativeFolderDialogPlatform === 'darwin') {
-    return chooseFolderWithAppleScript(title)
+    return chooseFolderWithAppleScript(title, defaultPath)
   }
 
   if (nativeFolderDialogPlatform === 'win32') {
-    return chooseFolderWithPowerShell(title)
+    return chooseFolderWithPowerShell(title, defaultPath)
   }
 
-  return chooseFolderWithZenity(title)
+  return chooseFolderWithZenity(title, defaultPath)
 }
 
-async function chooseFolderWithAppleScript(title: string): Promise<string | null> {
+async function chooseFolderWithAppleScript(title: string, defaultPath?: string): Promise<string | null> {
+  const script = defaultPath
+    ? `POSIX path of (choose folder with prompt ${quoteAppleScriptString(title)} default location POSIX file ${quoteAppleScriptString(defaultPath)})`
+    : `POSIX path of (choose folder with prompt ${quoteAppleScriptString(title)})`
   const result = await nativeFolderDialogExecFile(
     'osascript',
-    ['-e', `POSIX path of (choose folder with prompt ${quoteAppleScriptString(title)})`],
+    ['-e', script],
     { useCwd: false },
   )
 
@@ -135,13 +139,17 @@ async function chooseFolderWithAppleScript(title: string): Promise<string | null
   return normalizeSelectedFolderPath(result.stdout)
 }
 
-async function chooseFolderWithPowerShell(title: string): Promise<string | null> {
-  const script = [
+async function chooseFolderWithPowerShell(title: string, defaultPath?: string): Promise<string | null> {
+  const scriptLines = [
     'Add-Type -AssemblyName System.Windows.Forms',
     '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',
     `$dialog.Description = ${quotePowerShellString(title)}`,
-    'if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $dialog.SelectedPath }',
-  ].join('; ')
+  ]
+  if (defaultPath) {
+    scriptLines.push(`$dialog.SelectedPath = ${quotePowerShellString(defaultPath)}`)
+  }
+  scriptLines.push('if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $dialog.SelectedPath }')
+  const script = scriptLines.join('; ')
   const result = await nativeFolderDialogExecFile(
     'powershell',
     ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
@@ -156,10 +164,12 @@ async function chooseFolderWithPowerShell(title: string): Promise<string | null>
   return normalizeSelectedFolderPath(result.stdout)
 }
 
-async function chooseFolderWithZenity(title: string): Promise<string | null> {
+async function chooseFolderWithZenity(title: string, defaultPath?: string): Promise<string | null> {
+  const args = ['--file-selection', '--directory', '--title', title]
+  if (defaultPath) args.push(`--filename=${ensureTrailingPathSeparator(defaultPath)}`)
   const result = await nativeFolderDialogExecFile(
     'zenity',
-    ['--file-selection', '--directory', '--title', title],
+    args,
     { useCwd: false },
   )
 
@@ -174,6 +184,23 @@ async function chooseFolderWithZenity(title: string): Promise<string | null> {
 function normalizeSelectedFolderPath(stdout: string): string | null {
   const selectedPath = stdout.trim()
   return selectedPath ? path.resolve(selectedPath) : null
+}
+
+function normalizeDefaultFolderPath(defaultPath: string | undefined): string | null {
+  if (!defaultPath?.trim()) return null
+  const resolvedPath = path.resolve(defaultPath.trim())
+  try {
+    const stat = fs.statSync(resolvedPath)
+    if (stat.isDirectory()) return resolvedPath
+    if (stat.isFile()) return path.dirname(resolvedPath)
+  } catch {
+    return null
+  }
+  return null
+}
+
+function ensureTrailingPathSeparator(folderPath: string): string {
+  return folderPath.endsWith(path.sep) ? folderPath : `${folderPath}${path.sep}`
 }
 
 function isUserCancelled(message: string | undefined): boolean {
@@ -235,7 +262,8 @@ async function handleBrowse(url: URL): Promise<Response> {
   const targetPath = url.searchParams.get('path') || os.homedir() || '/'
   const resolvedPath = path.resolve(targetPath)
 
-  if (!isAllowedFilesystemPath(resolvedPath)) {
+  const isLocalBrowse = isLoopbackHost(url.hostname)
+  if (!isLocalBrowse && !isAllowedFilesystemPath(resolvedPath)) {
     return json({ error: 'Access denied: path outside allowed directory' }, 403)
   }
 
