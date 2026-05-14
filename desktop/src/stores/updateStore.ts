@@ -35,6 +35,7 @@ type UpdateStore = {
 
 let pendingUpdate: Update | null = null
 let startupCheckPromise: Promise<void> | null = null
+let activeCheckPromise: Promise<Update | null> | null = null
 
 function readDismissedUpdateVersion(): string | null {
   if (typeof window === 'undefined') return null
@@ -104,70 +105,85 @@ export const useUpdateStore = create<UpdateStore>((set, get) => ({
 
   checkForUpdates: async ({ silent = false } = {}) => {
     if (!isTauriRuntime()) return null
+    const currentStatus = get().status
 
-    set((state) => ({
-      ...state,
-      status: 'checking',
-      error: null,
-    }))
+    if (currentStatus === 'downloading' || currentStatus === 'restarting') {
+      return pendingUpdate
+    }
 
-    try {
-      const { check } = await import('@tauri-apps/plugin-updater')
-      const update = await check()
-      await setPendingUpdate(update)
+    if (activeCheckPromise) {
+      return activeCheckPromise
+    }
 
-      const checkedAt = Date.now()
+    activeCheckPromise = (async () => {
+      set((state) => ({
+        ...state,
+        status: 'checking',
+        error: null,
+      }))
 
-      if (!update) {
-        writeDismissedUpdateVersion(null)
+      try {
+        const { check } = await import('@tauri-apps/plugin-updater')
+        const update = await check()
+        await setPendingUpdate(update)
+
+        const checkedAt = Date.now()
+
+        if (!update) {
+          writeDismissedUpdateVersion(null)
+          set((state) => ({
+            ...state,
+            status: 'up-to-date',
+            availableVersion: null,
+            releaseNotes: null,
+            progressPercent: 0,
+            downloadedBytes: 0,
+            totalBytes: null,
+            checkedAt,
+            error: null,
+            shouldPrompt: false,
+          }))
+          return null
+        }
+
+        const dismissedVersion = readDismissedUpdateVersion()
+        const shouldPrompt = dismissedVersion !== update.version
+
         set((state) => ({
           ...state,
-          status: 'up-to-date',
-          availableVersion: null,
-          releaseNotes: null,
+          status: 'available',
+          availableVersion: update.version,
+          releaseNotes: update.body ?? null,
           progressPercent: 0,
           downloadedBytes: 0,
           totalBytes: null,
           checkedAt,
           error: null,
-          shouldPrompt: false,
+          shouldPrompt,
         }))
+        return update
+      } catch (error) {
+        if (!silent) {
+          set((state) => ({
+            ...state,
+            status: 'error',
+            error: getErrorMessage(error),
+            checkedAt: Date.now(),
+          }))
+        } else {
+          set((state) => ({
+            ...state,
+            status: state.availableVersion ? 'available' : 'idle',
+            checkedAt: Date.now(),
+          }))
+        }
         return null
       }
+    })().finally(() => {
+      activeCheckPromise = null
+    })
 
-      const dismissedVersion = readDismissedUpdateVersion()
-      const shouldPrompt = dismissedVersion !== update.version
-
-      set((state) => ({
-        ...state,
-        status: 'available',
-        availableVersion: update.version,
-        releaseNotes: update.body ?? null,
-        progressPercent: 0,
-        downloadedBytes: 0,
-        totalBytes: null,
-        checkedAt,
-        error: null,
-        shouldPrompt,
-      }))
-      return update
-    } catch (error) {
-      if (!silent) {
-        set((state) => ({
-          ...state,
-          status: 'error',
-          error: getErrorMessage(error),
-          checkedAt: Date.now(),
-        }))
-      } else {
-        set((state) => ({
-          ...state,
-          status: state.availableVersion ? 'available' : 'idle',
-          checkedAt: Date.now(),
-        }))
-      }
-      return null
-    }
+    return activeCheckPromise
   },
 
   installUpdate: async () => {

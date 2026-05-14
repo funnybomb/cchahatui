@@ -4,6 +4,17 @@ const check = vi.fn()
 const relaunch = vi.fn()
 const invoke = vi.fn()
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+
+  return { promise, resolve, reject }
+}
+
 vi.mock('@tauri-apps/plugin-updater', () => ({
   check,
 }))
@@ -93,6 +104,125 @@ describe('updateStore', () => {
 
     expect(useUpdateStore.getState().availableVersion).toBe('0.3.0')
     expect(useUpdateStore.getState().shouldPrompt).toBe(true)
+  })
+
+  it('clears update metadata when the native updater reports no update', async () => {
+    window.localStorage.setItem('cc-haha-dismissed-update-version', '0.1.0')
+    check.mockResolvedValue(null)
+
+    vi.resetModules()
+    const { useUpdateStore } = await import('./updateStore')
+
+    useUpdateStore.setState({
+      status: 'available',
+      availableVersion: '0.1.0',
+      releaseNotes: 'Old release',
+      shouldPrompt: true,
+    })
+
+    await expect(useUpdateStore.getState().checkForUpdates()).resolves.toBeNull()
+
+    expect(useUpdateStore.getState().status).toBe('up-to-date')
+    expect(useUpdateStore.getState().availableVersion).toBeNull()
+    expect(useUpdateStore.getState().releaseNotes).toBeNull()
+    expect(useUpdateStore.getState().shouldPrompt).toBe(false)
+    expect(window.localStorage.getItem('cc-haha-dismissed-update-version')).toBeNull()
+  })
+
+  it('deduplicates concurrent update checks through one native updater request', async () => {
+    const pendingCheck = deferred<{
+      version: string
+      body: string
+      close: ReturnType<typeof vi.fn>
+    }>()
+    const update = {
+      version: '0.4.0',
+      body: 'Concurrent check release',
+      close: vi.fn().mockResolvedValue(undefined),
+    }
+    check.mockReturnValue(pendingCheck.promise)
+
+    vi.resetModules()
+    const { useUpdateStore } = await import('./updateStore')
+
+    const first = useUpdateStore.getState().checkForUpdates()
+    const second = useUpdateStore.getState().checkForUpdates({ silent: true })
+
+    await vi.waitFor(() => expect(check).toHaveBeenCalledTimes(1))
+    expect(useUpdateStore.getState().status).toBe('checking')
+
+    pendingCheck.resolve(update)
+
+    await expect(first).resolves.toBe(update)
+    await expect(second).resolves.toBe(update)
+    expect(useUpdateStore.getState().status).toBe('available')
+    expect(useUpdateStore.getState().availableVersion).toBe('0.4.0')
+  })
+
+  it('keeps an existing update prompt when a silent refresh fails', async () => {
+    const update = {
+      version: '0.4.0',
+      body: 'Existing release',
+      close: vi.fn().mockResolvedValue(undefined),
+    }
+    check.mockResolvedValueOnce(update).mockRejectedValueOnce(new Error('temporary outage'))
+
+    vi.resetModules()
+    const { useUpdateStore } = await import('./updateStore')
+
+    await useUpdateStore.getState().checkForUpdates()
+    await expect(useUpdateStore.getState().checkForUpdates({ silent: true })).resolves.toBeNull()
+
+    expect(check).toHaveBeenCalledTimes(2)
+    expect(useUpdateStore.getState().status).toBe('available')
+    expect(useUpdateStore.getState().availableVersion).toBe('0.4.0')
+    expect(useUpdateStore.getState().error).toBeNull()
+    expect(useUpdateStore.getState().checkedAt).not.toBeNull()
+  })
+
+  it('does not start a new update check while an install is downloading or restarting', async () => {
+    const update = {
+      version: '0.4.0',
+      body: 'Ready to install',
+      close: vi.fn().mockResolvedValue(undefined),
+    }
+    check.mockResolvedValue(update)
+
+    vi.resetModules()
+    const { useUpdateStore } = await import('./updateStore')
+
+    await useUpdateStore.getState().checkForUpdates()
+    useUpdateStore.setState({ status: 'downloading' })
+
+    await expect(useUpdateStore.getState().checkForUpdates()).resolves.toBe(update)
+    expect(check).toHaveBeenCalledTimes(1)
+    expect(useUpdateStore.getState().status).toBe('downloading')
+
+    useUpdateStore.setState({ status: 'restarting' })
+
+    await expect(useUpdateStore.getState().checkForUpdates({ silent: true })).resolves.toBe(update)
+    expect(check).toHaveBeenCalledTimes(1)
+    expect(useUpdateStore.getState().status).toBe('restarting')
+  })
+
+  it('allows a later update check after an in-flight check fails', async () => {
+    const update = {
+      version: '0.4.1',
+      body: 'Recovered release',
+      close: vi.fn().mockResolvedValue(undefined),
+    }
+    check.mockRejectedValueOnce(new Error('network failed')).mockResolvedValueOnce(update)
+
+    vi.resetModules()
+    const { useUpdateStore } = await import('./updateStore')
+
+    await expect(useUpdateStore.getState().checkForUpdates()).resolves.toBeNull()
+    expect(useUpdateStore.getState().status).toBe('error')
+
+    await expect(useUpdateStore.getState().checkForUpdates()).resolves.toBe(update)
+    expect(check).toHaveBeenCalledTimes(2)
+    expect(useUpdateStore.getState().status).toBe('available')
+    expect(useUpdateStore.getState().availableVersion).toBe('0.4.1')
   })
 
   it('downloads, stops sidecars, installs, and relaunches', async () => {
