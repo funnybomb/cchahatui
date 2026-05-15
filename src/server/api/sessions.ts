@@ -208,6 +208,7 @@ async function listSessions(url: URL): Promise<Response> {
   const project = url.searchParams.get('project') || undefined
   const limit = parseInt(url.searchParams.get('limit') || '20', 10)
   const offset = parseInt(url.searchParams.get('offset') || '0', 10)
+  const includePlaceholders = url.searchParams.get('includePlaceholders') === '1'
 
   if (isNaN(limit) || limit < 0) {
     throw ApiError.badRequest('Invalid limit parameter')
@@ -216,7 +217,7 @@ async function listSessions(url: URL): Promise<Response> {
     throw ApiError.badRequest('Invalid offset parameter')
   }
 
-  const result = await sessionService.listSessions({ project, limit, offset })
+  const result = await sessionService.listSessions({ project, limit, offset, includePlaceholders })
   return Response.json(result)
 }
 
@@ -776,7 +777,7 @@ async function getRecentProjects(url: URL): Promise<Response> {
     return Response.json({ projects: recentProjectsCache.projects.slice(0, limit) })
   }
 
-  const { sessions } = await sessionService.listSessions({ limit: 200 })
+  const { sessions } = await sessionService.listSessions({ limit: 200, includePlaceholders: true })
   const validSessions = sessions.filter((session) => session.workDirExists && session.workDir)
 
   // First pass: resolve realPath for each session and group by realPath to dedup

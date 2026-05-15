@@ -39,7 +39,6 @@ const labels = {
     '09_slash_command': 'Slash 命令',
     '10_desktop_workspace': '桌面工作台',
     '11_token_usage': 'Token 用量',
-    '12_h5_access': 'H5 远程访问',
     '13_workspace_changes_worktree': 'Worktree & 改动',
   },
   en: {
@@ -55,7 +54,6 @@ const labels = {
     '09_slash_command': 'Slash Commands',
     '10_desktop_workspace': 'Desktop Workspace',
     '11_token_usage': 'Token Usage',
-    '12_h5_access': 'H5 Remote Access',
     '13_workspace_changes_worktree': 'Worktree & Changes',
   },
 }

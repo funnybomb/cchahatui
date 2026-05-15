@@ -4,8 +4,6 @@ import { sessionsApi, type RecentProject } from '../../api/sessions'
 import { filesystemApi } from '../../api/filesystem'
 import { projectsApi } from '../../api/projects'
 import { useTranslation } from '../../i18n'
-import { useMobileViewport } from '../../hooks/useMobileViewport'
-import { MobileBottomSheet } from './MobileBottomSheet'
 import { useSessionStore } from '../../stores/sessionStore'
 import { isTauriRuntime } from '../../lib/desktopRuntime'
 import { getProjectDisplayName, getProjectDisplayPath } from '../../lib/projectDisplay'
@@ -36,7 +34,6 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; direction: 'up' | 'down' } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const isMobileBrowser = useMobileViewport() && !isTauriRuntime()
 
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -153,7 +150,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
       }
     } catch (err) {
       console.error('[DirectoryPicker] Failed to open folder dialog:', err)
-      // H5 or non-local browser fallback. Local desktop/web should use the native picker.
+      // Fallback when the native picker is unavailable.
       setIsOpen(true)
       setMode('browse')
       await loadBrowseDir(value || undefined)
@@ -184,15 +181,12 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
       : { bottom: window.innerHeight - (dropdownPos?.top ?? 0) }),
     zIndex: 9999,
   }
-  const dropdownTitle = mode === 'recent' ? t('dirPicker.recent') : t('dirPicker.chooseProjectFolder')
   const dropdownContent = mode === 'recent' ? (
     <>
-      {!isMobileBrowser && (
-        <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-outline)]">
-          {t('dirPicker.recent')}
-        </div>
-      )}
-      <div className={`${isMobileBrowser ? '' : 'max-h-[300px]'} overflow-y-auto`}>
+      <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-outline)]">
+        {t('dirPicker.recent')}
+      </div>
+      <div className="max-h-[300px] overflow-y-auto">
         {loading ? (
           <div className="px-4 py-6 text-center text-xs text-[var(--color-text-tertiary)]">{t('common.loading')}</div>
         ) : projects.length === 0 ? (
@@ -205,9 +199,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
               <button
                 key={project.projectPath}
                 onClick={() => handleSelect(project.realPath)}
-                className={`flex w-full items-center gap-3 px-4 text-left transition-colors hover:bg-[var(--color-surface-hover)] ${
-                  isMobileBrowser ? 'min-h-[72px] py-3.5' : 'py-3'
-                } ${
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-hover)] ${
                   isSelected ? 'bg-[var(--color-surface-selected)]' : ''
                 }`}
               >
@@ -265,7 +257,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
         ))}
       </div>
 
-      <div className={`${isMobileBrowser ? '' : 'max-h-[240px]'} overflow-y-auto`}>
+      <div className="max-h-[240px] overflow-y-auto">
         {loading ? (
           <div className="px-3 py-4 text-center text-xs text-[var(--color-text-tertiary)]">{t('common.loading')}</div>
         ) : (
@@ -310,7 +302,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
   )
 
   return (
-    <div ref={ref} className={isWorkbar ? `relative min-w-0 ${isMobileBrowser ? 'flex-1' : 'max-w-[320px] shrink'}` : 'relative'}>
+    <div ref={ref} className={isWorkbar ? 'relative min-w-0 max-w-[320px] shrink' : 'relative'}>
       {/* Trigger — shows selected project chip or placeholder */}
       {value ? (
         <button
@@ -344,17 +336,7 @@ export function DirectoryPicker({ value, onChange, variant = 'chip', isGitProjec
       )}
 
       {isOpen && dropdownPos && (
-        isMobileBrowser ? (
-          <MobileBottomSheet
-            open={isOpen}
-            onClose={() => setIsOpen(false)}
-            title={dropdownTitle}
-            closeLabel={t('tabs.close')}
-            panelRef={dropdownRef}
-          >
-            {dropdownContent}
-          </MobileBottomSheet>
-        ) : createPortal(
+        createPortal(
           <div
             ref={dropdownRef}
             className={dropdownClassName}

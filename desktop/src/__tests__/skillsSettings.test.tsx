@@ -176,7 +176,6 @@ describe('Settings > Skills tab', () => {
     expect(screen.getByText('No skills installed')).toBeInTheDocument()
     expect(screen.getByText(/cchahatui\/config\/skills/)).toBeInTheDocument()
     expect(screen.getByText(/\.cchahatui\/skills/)).toBeInTheDocument()
-    expect(screen.queryByText(/Claude Code-compatible skills/)).not.toBeInTheDocument()
     expect(screen.queryByText(/CLAUDE_CONFIG_DIR/)).not.toBeInTheDocument()
     expect(screen.queryByText(/~\/\.claude\/skills/)).not.toBeInTheDocument()
   })

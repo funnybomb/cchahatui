@@ -46,7 +46,7 @@ cchahatui is a **DeepSeek-first desktop AI coding workspace**. It is developed f
 
 cchahatui integrates and adapts two public projects:
 
-- [cc-haha](https://github.com/NanmiCoder/cc-haha): desktop workspace, session/project workflow, Agents, Skills, MCP, Computer Use, remote access, IM integration, and scheduled task references.
+- [cc-haha](https://github.com/NanmiCoder/cc-haha): desktop workspace, session/project workflow, Agents, Skills, MCP, Computer Use, IM integration, and scheduled task references.
 - [DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI): DeepSeek-first terminal coding agent direction, default model assumptions, and DeepSeek workflow references.
 
 This repository packages those ideas into the independent `cchahatui` desktop product. App name, icon, config directory, default provider, installation docs, and release flow are managed for cchahatui. See [NOTICE.md](NOTICE.md) for upstream acknowledgements.
@@ -55,7 +55,7 @@ This repository packages those ideas into the independent `cchahatui` desktop pr
 
 ## Desktop Preview
 
-cchahatui brings sessions, multi-project navigation, branch / Worktree controls, right-side file changes, code diffs, permission review, DeepSeek provider setup, and remote access into one graphical workspace for daily development flows beyond the terminal.
+cchahatui brings sessions, multi-project navigation, branch / Worktree controls, right-side file changes, code diffs, permission review, and DeepSeek provider setup into one local graphical workspace for daily development flows beyond the terminal.
 
 <p align="center">
   <a href="https://github.com/funnybomb/cchahatui/releases"><img src="https://img.shields.io/badge/Download_Desktop-macOS_%7C_Windows-D97757?style=for-the-badge" alt="Download Desktop"></a>
@@ -85,7 +85,6 @@ cchahatui brings sessions, multi-project navigation, branch / Worktree controls,
     <td align="center" width="25%"><img src="docs/images/desktop_ui/11_token_usage.png" alt="Token Usage"><br><b>Token Usage</b></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><img src="docs/images/desktop_ui/12_h5_access.png" alt="H5 Remote Access"><br><b>H5 Remote Access</b></td>
     <td align="center" width="25%"><img src="docs/images/desktop_ui/13_workspace_changes_worktree.png" alt="Worktree &amp; Changes"><br><b>Worktree &amp; Changes</b></td>
   </tr>
 </table>
@@ -148,7 +147,6 @@ bun run build:macos-arm64
 - **Permission review**: approve risky commands, tool calls, and model follow-up questions in the GUI.
 - **DeepSeek-first provider setup**: configure DeepSeek, OpenAI-compatible APIs, WebSearch fallback, and local options.
 - **Computer Use**: let the agent take screenshots, click, type, and control desktop apps after authorization.
-- **H5 remote access**: open the current desktop session from a phone or another device with a one-time token.
 - **IM integration**: chat, switch projects, and approve actions through Telegram / Feishu / WeChat / DingTalk.
 - **Scheduled tasks and usage stats**: create planned tasks and track local token usage trends.
 

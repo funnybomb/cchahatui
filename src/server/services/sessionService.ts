@@ -212,6 +212,9 @@ type PersistedWorktreeSession = {
 
 type ContentBlock = Record<string, unknown>
 
+const PLACEHOLDER_SESSION_TITLES = new Set(['', 'New Session', 'Untitled Session'])
+const EMPTY_PLACEHOLDER_ENTRY_TYPES = new Set(['file-history-snapshot', 'session-meta'])
+
 const USER_INTERRUPTION_TEXTS = new Set([
   '[Request interrupted by user]',
   '[Request interrupted by user for tool use]',
@@ -335,6 +338,32 @@ export class SessionService {
       !!entry.message?.role &&
       (entry.type === 'user' || entry.type === 'assistant' || entry.type === 'system')
     ).length
+  }
+
+  private isPlaceholderSessionTitle(title: string): boolean {
+    return PLACEHOLDER_SESSION_TITLES.has(title.trim())
+  }
+
+  private isEmptyPlaceholderSession(
+    entries: RawEntry[],
+    title: string,
+    messageCount: number,
+  ): boolean {
+    if (messageCount !== 0 || !this.isPlaceholderSessionTitle(title) || entries.length === 0) {
+      return false
+    }
+
+    return entries.every((entry) => {
+      if (entry.message?.role) return false
+      if (entry.type === 'custom-title' && typeof entry.customTitle === 'string' && entry.customTitle.trim()) {
+        return false
+      }
+      const aiTitle = (entry as Record<string, unknown>).aiTitle
+      if (entry.type === 'ai-title' && typeof aiTitle === 'string' && aiTitle.trim()) {
+        return false
+      }
+      return typeof entry.type === 'string' && EMPTY_PLACEHOLDER_ENTRY_TYPES.has(entry.type)
+    })
   }
 
   // --------------------------------------------------------------------------
@@ -1162,6 +1191,7 @@ export class SessionService {
     project?: string
     limit?: number
     offset?: number
+    includePlaceholders?: boolean
   }): Promise<{ sessions: SessionListItem[]; total: number }> {
     const sessionFiles = await this.discoverSessionFiles(options?.project)
     const filesWithStats = (await Promise.all(sessionFiles.map(async (sessionFile) => {
@@ -1177,13 +1207,11 @@ export class SessionService {
 
     filesWithStats.sort((a, b) => b.stat.mtime.getTime() - a.stat.mtime.getTime())
 
-    const total = filesWithStats.length
     const offset = options?.offset ?? 0
     const limit = options?.limit ?? 50
-    const paginatedFiles = filesWithStats.slice(offset, offset + limit)
 
     // Build session list items with metadata from file stats & first entries
-    const items = (await Promise.all(paginatedFiles.map(async ({ filePath, projectDir, sessionId, stat }) => {
+    const allItems = (await Promise.all(filesWithStats.map(async ({ filePath, projectDir, sessionId, stat }) => {
       try {
         const entries = await this.readJsonlFile(filePath)
         const workDir = this.resolveWorkDirFromEntries(entries, projectDir)
@@ -1195,6 +1223,9 @@ export class SessionService {
         ).length
 
         const title = this.extractTitle(entries)
+        if (!options?.includePlaceholders && this.isEmptyPlaceholderSession(entries, title, messageCount)) {
+          return null
+        }
 
         // Find the earliest timestamp from entries, fallback to file birthtime
         let createdAt = stat.birthtime.toISOString()
@@ -1220,6 +1251,8 @@ export class SessionService {
         return null
       }
     }))).filter((item): item is SessionListItem => item !== null)
+    const total = allItems.length
+    const items = allItems.slice(offset, offset + limit)
 
     return { sessions: items, total }
   }

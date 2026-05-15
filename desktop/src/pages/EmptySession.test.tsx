@@ -16,8 +16,6 @@ const mocks = vi.hoisted(() => ({
   wsOnMessage: vi.fn(),
   wsSend: vi.fn(),
   wsDisconnect: vi.fn(),
-  isMobile: false,
-  isTauriRuntime: false,
 }))
 
 vi.mock('../api/sessions', () => ({
@@ -51,14 +49,6 @@ vi.mock('../api/websocket', () => ({
     send: mocks.wsSend,
     disconnect: mocks.wsDisconnect,
   },
-}))
-
-vi.mock('../hooks/useMobileViewport', () => ({
-  useMobileViewport: () => mocks.isMobile,
-}))
-
-vi.mock('../lib/desktopRuntime', () => ({
-  isTauriRuntime: () => mocks.isTauriRuntime,
 }))
 
 vi.mock('../components/shared/DirectoryPicker', () => ({
@@ -147,8 +137,6 @@ describe('EmptySession', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.localStorage.clear()
-    mocks.isMobile = false
-    mocks.isTauriRuntime = false
     useSettingsStore.setState({ locale: 'en', activeProviderName: null })
     useSessionStore.setState(initialSessionState, true)
     useChatStore.setState(initialChatState, true)
@@ -188,20 +176,6 @@ describe('EmptySession', () => {
     useSessionRuntimeStore.setState(initialRuntimeState, true)
     useUIStore.setState(initialUiState, true)
     useProjectMemoryStore.setState(initialProjectMemoryState, true)
-  })
-
-  it('uses compact composer controls on phone-sized H5 browsers', async () => {
-    mocks.isMobile = true
-
-    render(<EmptySession />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('permission-mode-selector')).toHaveAttribute('data-compact', 'true')
-    })
-    expect(screen.getByTestId('model-selector')).toHaveAttribute('data-compact', 'true')
-    expect(screen.getByRole('button', { name: 'Run' })).toHaveClass('h-11', 'w-11')
-    expect(screen.getByTestId('empty-session-composer-shell')).toHaveClass('px-3')
-    expect(screen.getByTestId('empty-session-composer-panel')).toHaveClass('rounded-2xl')
   })
 
   it('creates a session with the selected project and branch when submitted', async () => {

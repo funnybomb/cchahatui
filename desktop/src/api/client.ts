@@ -8,7 +8,6 @@ const ENV_BASE_URL =
 const DEFAULT_BASE_URL = ENV_BASE_URL || 'http://127.0.0.1:3456'
 
 let baseUrl = DEFAULT_BASE_URL
-let authToken: string | null = null
 const DIAGNOSTICS_PATH = '/api/diagnostics/events'
 
 function getErrorMessage(status: number, body: unknown) {
@@ -29,15 +28,6 @@ export function setBaseUrl(url: string) {
 
 export function getBaseUrl() {
   return baseUrl
-}
-
-export function setAuthToken(token: string | null) {
-  const trimmed = token?.trim() ?? ''
-  authToken = trimmed.length > 0 ? trimmed : null
-}
-
-export function getAuthToken() {
-  return authToken
 }
 
 export function getDefaultBaseUrl() {
@@ -131,24 +121,12 @@ export function rawRecordDiagnosticEvent(event: {
 }
 
 function buildHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
+  return {
     'Content-Type': 'application/json',
   }
-
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`
-  }
-
-  return headers
 }
 
 function sanitizeDiagnosticValue(value: unknown): unknown {
-  if (!authToken) return value
-
-  if (typeof value === 'string') {
-    return value.split(authToken).join('[redacted]')
-  }
-
   if (Array.isArray(value)) {
     return value.map((entry) => sanitizeDiagnosticValue(entry))
   }

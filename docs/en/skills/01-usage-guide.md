@@ -1,6 +1,6 @@
-# Claude Code Skills System -- Usage Guide
+# cchahatui Skills System -- Usage Guide
 
-> Skills are the extensible capability engine of Claude Code, allowing you to define custom automated workflows using Markdown files.
+> Skills are the extensible capability engine of cchahatui, allowing you to define custom automated workflows using Markdown files.
 
 <p align="center">
 <a href="#1-what-are-skills">What Are Skills</a> · <a href="#2-six-skill-sources">Six Sources</a> · <a href="#3-skill-definition-format">Definition Format</a> · <a href="#4-invocation-methods">Invocation</a> · <a href="#5-execution-context">Execution Context</a> · <a href="#6-conditional-activation">Conditional Activation</a> · <a href="#7-permission-control">Permissions</a> · <a href="#8-quick-reference">Quick Reference</a>
@@ -12,7 +12,7 @@
 
 ## 1. What Are Skills?
 
-Skills are Claude Code's **extensible capability plugin system**. Each Skill is a Markdown file (with YAML frontmatter) that defines a specialized prompt and behavioral configuration, enabling Claude to execute professional workflows in specific scenarios.
+Skills are cchahatui's **extensible capability plugin system**. Each Skill is a Markdown file (with YAML frontmatter) that defines a specialized prompt and behavioral configuration, enabling Claude to execute professional workflows in specific scenarios.
 
 Core capabilities:
 
@@ -31,7 +31,7 @@ Core capabilities:
 
 ![Skill Source Types](./images/02-skill-sources.png)
 
-Claude Code loads Skills from 6 different sources, ordered by priority from highest to lowest:
+cchahatui loads Skills from 6 different sources, ordered by priority from highest to lowest:
 
 ### 1. Bundled (Built-in Skills)
 
@@ -56,14 +56,14 @@ Compiled into the CLI binary and available to all users. Defined in TypeScript a
 
 ### 2. Managed (Policy-Managed Skills)
 
-Controlled by organizational policies, stored in `<managed-path>/.claude/skills/`. Suitable for enterprise deployments.
+Controlled by organizational policies, stored in `<managed-path>/.cchahatui/skills/`. Suitable for enterprise deployments.
 
 ### 3. User (User Skills)
 
-Defined by individual users, stored in `~/.claude/skills/`.
+Defined by individual users, stored in `~/Library/Application Support/cchahatui/config/skills/`.
 
 ```
-~/.claude/skills/
+~/Library/Application Support/cchahatui/config/skills/
 ├── my-review/
 │   └── SKILL.md          ← Main Skill file
 ├── deploy-check/
@@ -73,11 +73,11 @@ Defined by individual users, stored in `~/.claude/skills/`.
 
 ### 4. Project (Project Skills)
 
-Defined at the project level, stored in `.claude/skills/`. Can be committed to version control.
+Defined at the project level, stored in `.cchahatui/skills/`. Can be committed to version control.
 
 ```
 your-project/
-└── .claude/
+└── .cchahatui/
     └── skills/
         ├── lint-fix/
         │   └── SKILL.md
@@ -311,7 +311,7 @@ In addition to conditional activation, Skills also support **runtime discovery**
 ```
 1. User operates on a file in a deeply nested directory
 2. discoverSkillDirsForPaths() traverses upward from the file path
-3. Looks for .claude/skills/ directories (not beyond cwd)
+3. Looks for .cchahatui/skills/ directories (not beyond cwd)
 4. Skips directories ignored by .gitignore
 5. New directory found → addSkillDirectories() → load and register
 ```
@@ -352,10 +352,10 @@ Allow? (y)es / (n)o / (a)lways allow / (d)eny
 
 ```bash
 # 1. Create directory
-mkdir -p ~/.claude/skills/my-skill
+mkdir -p "$HOME/Library/Application Support/cchahatui/config/skills/my-skill"
 
 # 2. Create SKILL.md
-cat > ~/.claude/skills/my-skill/SKILL.md << 'EOF'
+cat > "$HOME/Library/Application Support/cchahatui/config/skills/my-skill/SKILL.md" << 'EOF'
 ---
 name: My Skill
 description: An example Skill
@@ -372,8 +372,8 @@ EOF
 
 | Operation | Method |
 |-----------|--------|
-| Create a Skill | `~/.claude/skills/<name>/SKILL.md` |
-| Project-level Skill | `.claude/skills/<name>/SKILL.md` |
+| Create a Skill | `~/Library/Application Support/cchahatui/config/skills/<name>/SKILL.md` |
+| Project-level Skill | `.cchahatui/skills/<name>/SKILL.md` |
 | Invoke a Skill | Type `/skill-name` in terminal |
 | View available Skills | Type `/skills` in terminal |
 | Create Skill with AI | `/skillify` |

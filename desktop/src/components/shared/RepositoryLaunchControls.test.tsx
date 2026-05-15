@@ -3,21 +3,8 @@ import type { ComponentProps } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@testing-library/jest-dom'
 
-const viewportMocks = vi.hoisted(() => ({
-  isMobile: false,
-  isTauri: false,
-}))
-
 const apiMocks = vi.hoisted(() => ({
   getRepositoryContext: vi.fn(),
-}))
-
-vi.mock('../../hooks/useMobileViewport', () => ({
-  useMobileViewport: () => viewportMocks.isMobile,
-}))
-
-vi.mock('../../lib/desktopRuntime', () => ({
-  isTauriRuntime: () => viewportMocks.isTauri,
 }))
 
 vi.mock('../../api/sessions', () => ({
@@ -72,7 +59,7 @@ const okRepositoryContext = {
       worktreePath: null,
     },
     {
-      name: 'feature/h5',
+      name: 'feature/desktop',
       current: false,
       local: true,
       remote: false,
@@ -104,14 +91,12 @@ async function openBranchMenu() {
 
 describe('RepositoryLaunchControls', () => {
   beforeEach(() => {
-    viewportMocks.isMobile = false
-    viewportMocks.isTauri = false
     apiMocks.getRepositoryContext.mockReset()
     apiMocks.getRepositoryContext.mockResolvedValue(okRepositoryContext)
     Element.prototype.scrollIntoView = vi.fn()
   })
 
-  it('keeps the desktop branch dropdown when not in mobile browser mode', async () => {
+  it('opens the desktop branch dropdown', async () => {
     renderControls()
 
     await openBranchMenu()
@@ -120,33 +105,6 @@ describe('RepositoryLaunchControls', () => {
     expect(listbox).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Select branch' })).not.toBeInTheDocument()
     expect(listbox.parentElement?.className).toContain('w-[390px]')
-  })
-
-  it('uses the full-width mobile bottom sheet in H5 mobile browser mode', async () => {
-    viewportMocks.isMobile = true
-    viewportMocks.isTauri = false
-
-    renderControls()
-
-    await openBranchMenu()
-
-    const dialog = await screen.findByRole('dialog', { name: 'Select branch' })
-    expect(dialog).toHaveClass('inset-x-0')
-    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
-    expect(screen.getByRole('listbox', { name: 'Select branch' })).toBeInTheDocument()
-  })
-
-  it('does not use the H5 mobile sheet inside Tauri even on a narrow viewport', async () => {
-    viewportMocks.isMobile = true
-    viewportMocks.isTauri = true
-
-    renderControls()
-
-    await openBranchMenu()
-
-    const listbox = await screen.findByRole('listbox', { name: 'Select branch' })
-    expect(listbox).toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: 'Select branch' })).not.toBeInTheDocument()
   })
 
   it('keeps keyboard branch selection working from the search field', async () => {
@@ -160,7 +118,7 @@ describe('RepositoryLaunchControls', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
 
     await waitFor(() => {
-      expect(onBranchChange).toHaveBeenCalledWith('feature/h5')
+      expect(onBranchChange).toHaveBeenCalledWith('feature/desktop')
     })
   })
 })

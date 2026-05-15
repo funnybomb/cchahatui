@@ -404,9 +404,9 @@ type BundledSkillDefinition = {
   ↓
 插件技能（plugin）          ← 插件注册
   ↓
-用户技能（~/.claude/skills/） ← 用户全局
+用户技能（cchahatui 用户配置目录 / skills） ← 用户全局
   ↓
-项目技能（.claude/skills/）   ← 项目级
+项目技能（.cchahatui/skills/）   ← 项目级
   ↓
 策略技能（policy）           ← 组织管理
 ```

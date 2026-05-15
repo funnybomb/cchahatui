@@ -7,7 +7,6 @@ import { useSessionStore } from '../../stores/sessionStore'
 const mocks = vi.hoisted(() => ({
   initializeDesktopServerUrl: vi.fn(),
   isTauriRuntime: false,
-  isMobile: false,
   fetchAll: vi.fn(),
   restoreTabs: vi.fn(),
   connectToSession: vi.fn(),
@@ -21,17 +20,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../lib/desktopRuntime', () => ({
   initializeDesktopServerUrl: mocks.initializeDesktopServerUrl,
   isTauriRuntime: () => mocks.isTauriRuntime,
-  isH5ConnectionRequiredError: (error: unknown) =>
-    error instanceof Error && error.name === 'H5ConnectionRequiredError',
 }))
 
 vi.mock('../../stores/settingsStore', () => ({
   useSettingsStore: (selector: (state: { fetchAll: typeof mocks.fetchAll }) => unknown) =>
     selector({ fetchAll: mocks.fetchAll }),
-}))
-
-vi.mock('../../hooks/useMobileViewport', () => ({
-  useMobileViewport: () => mocks.isMobile,
 }))
 
 vi.mock('../../stores/tabStore', () => {
@@ -88,16 +81,6 @@ vi.mock('./TabBar', () => ({
   TabBar: () => <nav>tabs loaded</nav>,
 }))
 
-vi.mock('./H5ConnectionView', () => ({
-  H5ConnectionView: ({ error, onConnected }: { error?: string | null; onConnected: () => void }) => (
-    <div>
-      <div>h5 connection view</div>
-      <div>{error}</div>
-      <button type="button" onClick={onConnected}>retry h5 bootstrap</button>
-    </div>
-  ),
-}))
-
 vi.mock('../shared/Toast', () => ({
   ToastContainer: () => null,
 }))
@@ -112,7 +95,6 @@ describe('AppShell boot flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.isTauriRuntime = false
-    mocks.isMobile = false
     mocks.initializeDesktopServerUrl.mockResolvedValue('http://127.0.0.1:3456')
     mocks.fetchAll.mockResolvedValue(undefined)
     mocks.restoreTabs.mockResolvedValue(undefined)
@@ -188,149 +170,13 @@ describe('AppShell boot flow', () => {
     })
   })
 
-  it('shows the H5 connection view in browser mode when startup needs H5 auth', async () => {
-    mocks.initializeDesktopServerUrl.mockRejectedValueOnce(
-      Object.assign(new Error('Enter your H5 token to continue.'), {
-        name: 'H5ConnectionRequiredError',
-        serverUrl: 'https://remote.example.com',
-      }),
-    )
-
-    render(<AppShell />)
-
-    expect(await screen.findByText('h5 connection view')).toBeInTheDocument()
-    expect(screen.getByText('Enter your H5 token to continue.')).toBeInTheDocument()
-    expect(screen.queryByText('app.serverFailed')).not.toBeInTheDocument()
-  })
-
-  it('shows the H5 connection view for unreachable remote browser startup failures', async () => {
-    mocks.initializeDesktopServerUrl.mockRejectedValueOnce(
-      Object.assign(new Error('Unable to reach https://remote.example.com. Check the server URL or network access.'), {
-        name: 'H5ConnectionRequiredError',
-        serverUrl: 'https://remote.example.com',
-      }),
-    )
-
-    render(<AppShell />)
-
-    expect(await screen.findByText('h5 connection view')).toBeInTheDocument()
-    expect(screen.getByText('Unable to reach https://remote.example.com. Check the server URL or network access.')).toBeInTheDocument()
-    expect(screen.queryByText('app.serverFailed')).not.toBeInTheDocument()
-  })
-
-  it('retries bootstrap after a successful H5 connection', async () => {
-    mocks.initializeDesktopServerUrl
-      .mockRejectedValueOnce(
-        Object.assign(new Error('The saved H5 token is no longer valid.'), {
-          name: 'H5ConnectionRequiredError',
-          serverUrl: 'https://remote.example.com',
-        }),
-      )
-      .mockResolvedValueOnce('https://remote.example.com')
-
-    render(<AppShell />)
-
-    expect(await screen.findByText('h5 connection view')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'retry h5 bootstrap' }))
-
-    await screen.findByText('sidebar loaded')
-    expect(mocks.initializeDesktopServerUrl).toHaveBeenCalledTimes(2)
-    expect(mocks.fetchAll).toHaveBeenCalledTimes(1)
-  })
-
   it('keeps the Tauri startup error path unchanged', async () => {
     mocks.isTauriRuntime = true
-    mocks.initializeDesktopServerUrl.mockRejectedValueOnce(
-      Object.assign(new Error('desktop server startup failed'), {
-        name: 'H5ConnectionRequiredError',
-        serverUrl: 'https://remote.example.com',
-      }),
-    )
+    mocks.initializeDesktopServerUrl.mockRejectedValueOnce(new Error('desktop server startup failed'))
 
     render(<AppShell />)
 
     expect(await screen.findByText('app.serverFailed')).toBeInTheDocument()
-    expect(screen.queryByText('h5 connection view')).not.toBeInTheDocument()
   })
 
-  it('renders a mobile drawer toggle and backdrop in browser H5 mode', async () => {
-    mocks.isMobile = true
-
-    render(<AppShell />)
-
-    await screen.findByText('content loaded')
-
-    await waitFor(() => {
-      expect(useUIStore.getState().sidebarOpen).toBe(false)
-    })
-
-    expect(screen.getByTestId('sidebar-shell')).toHaveAttribute('data-state', 'closed')
-    expect(screen.getByTestId('sidebar-shell')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByTestId('sidebar-shell')).toHaveAttribute('inert')
-    expect(screen.queryByText('sidebar loaded')).not.toBeInTheDocument()
-    expect(screen.getByTestId('mobile-sidebar-toggle')).toBeInTheDocument()
-    expect(screen.queryByTestId('sidebar-backdrop')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('mobile-sidebar-toggle'))
-
-    expect(useUIStore.getState().sidebarOpen).toBe(true)
-    expect(screen.getByTestId('sidebar-shell')).toHaveAttribute('data-state', 'open')
-    expect(screen.getByText('sidebar loaded')).toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-backdrop')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('sidebar-backdrop'))
-
-    expect(useUIStore.getState().sidebarOpen).toBe(false)
-    expect(screen.getByTestId('sidebar-shell')).toHaveAttribute('data-state', 'closed')
-  })
-
-  it('shares the mobile drawer row with the active session title', async () => {
-    mocks.isMobile = true
-    mocks.tabState.activeTabId = 'session-mobile'
-    mocks.tabState.tabs = [
-      { sessionId: 'session-mobile', title: 'Fallback tab title', type: 'session', status: 'running' },
-    ]
-    useSessionStore.setState({
-      sessions: [{
-        id: 'session-mobile',
-        title: 'Analyze recent commits',
-        createdAt: '2026-05-10T00:00:00.000Z',
-        modifiedAt: new Date().toISOString(),
-        messageCount: 7,
-        projectPath: '/tmp/project',
-        workDir: '/tmp/project',
-        workDirExists: true,
-      }],
-      activeSessionId: 'session-mobile',
-      isLoading: false,
-      error: null,
-    })
-
-    render(<AppShell />)
-
-    await screen.findByText('content loaded')
-
-    const header = screen.getByTestId('mobile-session-header')
-    expect(header).toHaveTextContent('Analyze recent commits')
-    expect(header).toHaveTextContent('session.active')
-    expect(header).toHaveTextContent('session.messages')
-    expect(screen.getByTestId('mobile-sidebar-toggle')).toHaveClass('h-10', 'w-10')
-  })
-
-  it('keeps browser H5 mobile on chat tabs when settings was restored as active', async () => {
-    mocks.isMobile = true
-    mocks.tabState.activeTabId = '__settings__'
-    mocks.tabState.tabs = [
-      { sessionId: '__settings__', title: 'Settings', type: 'settings', status: 'idle' },
-      { sessionId: 'session-1', title: 'Existing session', type: 'session', status: 'idle' },
-    ]
-
-    render(<AppShell />)
-
-    await screen.findByText('content loaded')
-    expect(screen.queryByText('tabs loaded')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(mocks.setActiveTab).toHaveBeenCalledWith('session-1')
-    })
-  })
 })

@@ -15,6 +15,7 @@ import {
 import { conversationService } from '../services/conversationService.js'
 import { clearCommandsCache } from '../../commands.js'
 import { sanitizePath } from '../../utils/sessionStoragePortable.js'
+import { CCHAHATUI_PROJECT_CONFIG_DIR_ENV } from '../../utils/cchahatuiConfig.js'
 
 // ============================================================================
 // Test helpers
@@ -22,12 +23,17 @@ import { sanitizePath } from '../../utils/sessionStoragePortable.js'
 
 let tmpDir: string
 let service: SessionService
+let previousClaudeConfigDir: string | undefined
+let previousProjectConfigDir: string | undefined
 
 /** Create a temporary config dir and configure the service to use it. */
 async function setupTmpConfigDir(): Promise<string> {
+  previousClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR
+  previousProjectConfigDir = process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
   tmpDir = path.join(os.tmpdir(), `claude-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   await fs.mkdir(path.join(tmpDir, 'projects'), { recursive: true })
   process.env.CLAUDE_CONFIG_DIR = tmpDir
+  process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = tmpDir
   return tmpDir
 }
 
@@ -35,7 +41,10 @@ async function cleanupTmpDir(): Promise<void> {
   if (tmpDir) {
     await fs.rm(tmpDir, { recursive: true, force: true })
   }
-  delete process.env.CLAUDE_CONFIG_DIR
+  if (previousClaudeConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR
+  else process.env.CLAUDE_CONFIG_DIR = previousClaudeConfigDir
+  if (previousProjectConfigDir === undefined) delete process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
+  else process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = previousProjectConfigDir
 }
 
 function git(cwd: string, ...args: string[]): string {
@@ -433,6 +442,64 @@ describe('SessionService', () => {
     expect(session.projectPath).toBe('-tmp-testproject')
   })
 
+  it('should hide empty desktop placeholder sessions by default', async () => {
+    const placeholderId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000'
+    const realId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001'
+    await writeSessionFile('-tmp-testproject', placeholderId, [
+      makeSnapshotEntry(),
+      makeSessionMetaEntry('/tmp/testproject'),
+    ])
+    await writeSessionFile('-tmp-testproject', realId, [
+      makeSnapshotEntry(),
+      makeSessionMetaEntry('/tmp/testproject'),
+      makeUserEntry('Real question'),
+    ])
+
+    const result = await service.listSessions()
+
+    expect(result.total).toBe(1)
+    expect(result.sessions.map((session) => session.id)).toEqual([realId])
+  })
+
+  it('should include empty placeholders when explicitly requested', async () => {
+    const placeholderId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002'
+    await writeSessionFile('-tmp-testproject', placeholderId, [
+      makeSnapshotEntry(),
+      makeSessionMetaEntry('/tmp/testproject'),
+    ])
+
+    const result = await service.listSessions({ includePlaceholders: true })
+
+    expect(result.total).toBe(1)
+    expect(result.sessions[0]).toMatchObject({
+      id: placeholderId,
+      title: 'Untitled Session',
+      messageCount: 0,
+    })
+  })
+
+  it('should keep explicitly titled empty sessions in history', async () => {
+    const draftId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003'
+    await writeSessionFile('-tmp-testproject', draftId, [
+      makeSnapshotEntry(),
+      makeSessionMetaEntry('/tmp/testproject'),
+      {
+        type: 'custom-title',
+        customTitle: 'Saved draft',
+        timestamp: '2026-01-01T00:00:01.000Z',
+      },
+    ])
+
+    const result = await service.listSessions()
+
+    expect(result.total).toBe(1)
+    expect(result.sessions[0]).toMatchObject({
+      id: draftId,
+      title: 'Saved draft',
+      messageCount: 0,
+    })
+  })
+
   it('should paginate results with limit and offset', async () => {
     // Create 3 sessions
     for (let i = 0; i < 3; i++) {
@@ -452,12 +519,12 @@ describe('SessionService', () => {
     expect(page2.sessions).toHaveLength(1)
   })
 
-  it('should only parse the requested page when listing many sessions', async () => {
+  it('should parse enough sessions to filter empty placeholders before pagination', async () => {
     for (let i = 0; i < 12; i++) {
       const id = `1000000${i.toString(16)}-bbbb-cccc-dddd-eeeeeeeeeeee`
       const filePath = await writeSessionFile('-tmp-many-sessions', id, [
         makeSnapshotEntry(),
-        makeUserEntry(`Message ${i}`),
+        ...(i < 6 ? [makeSessionMetaEntry('/tmp/many-sessions')] : [makeUserEntry(`Message ${i}`)]),
       ])
       const mtime = new Date(Date.now() - i * 1000)
       await fs.utimes(filePath, mtime, mtime)
@@ -475,9 +542,10 @@ describe('SessionService', () => {
 
     const result = await service.listSessions({ limit: 3, offset: 0 })
 
-    expect(result.total).toBe(12)
+    expect(result.total).toBe(6)
     expect(result.sessions).toHaveLength(3)
-    expect(readCount).toBe(3)
+    expect(readCount).toBe(12)
+    expect(result.sessions.map((session) => session.title)).toEqual(['Message 6', 'Message 7', 'Message 8'])
   })
 
   it('should filter sessions by project', async () => {

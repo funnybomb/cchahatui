@@ -53,4 +53,16 @@ describe('parseLauncherArgs', () => {
       args: ['plugin', 'install', 'demo'],
     })
   })
+
+  it('supports equals-form app root arguments', () => {
+    expect(
+      parseLauncherArgs(
+        ['--app-root=/tmp/app', '--host=127.0.0.1'],
+        '/Users/demo/.local/bin',
+      ),
+    ).toEqual({
+      appRoot: '/tmp/app',
+      args: ['--host=127.0.0.1'],
+    })
+  })
 })

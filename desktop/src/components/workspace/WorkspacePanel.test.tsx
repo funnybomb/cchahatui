@@ -763,8 +763,8 @@ describe('WorkspacePanel', () => {
     expect(view.getByRole('button', { name: 'Collapse preview' })).toBeTruthy()
   }, 30000)
 
-  it('keeps diff rows intrinsically wide so H5 users can scroll sideways', async () => {
-    const longDiffLine = '+const label = "this is a very long generated line that should not be compressed into the phone viewport";'
+  it('keeps diff rows intrinsically wide so long lines can scroll sideways', async () => {
+    const longDiffLine = '+const label = "this is a very long generated line that should not be compressed into the viewport";'
 
     await setWorkspaceState((state) => ({
       ...state,

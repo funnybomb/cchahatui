@@ -740,13 +740,12 @@ describe('Sidebar', () => {
     expect(screen.getByDisplayValue('Open Session')).toBeInTheDocument()
   })
 
-  it('keeps project and session action menus available in mobile web layout', () => {
-    const onRequestClose = vi.fn()
+  it('keeps project and session action menus available', () => {
     useSessionStore.setState({
       sessions: [
         {
           id: 'session-1',
-          title: 'Mobile Session',
+          title: 'Action Session',
           createdAt: '2026-05-01T00:00:00.000Z',
           modifiedAt: '2026-05-01T02:00:00.000Z',
           messageCount: 1,
@@ -757,13 +756,13 @@ describe('Sidebar', () => {
       ],
     })
 
-    render(<Sidebar isMobile onRequestClose={onRequestClose} />)
+    render(<Sidebar />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Project actions for project-a' }))
     expect(screen.getByRole('button', { name: 'Project memory' })).toBeInTheDocument()
 
     fireEvent.click(document.body)
-    fireEvent.click(screen.getByRole('button', { name: 'Session actions for Mobile Session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Session actions for Action Session' }))
     expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument()
   })
 
@@ -873,42 +872,6 @@ describe('Sidebar', () => {
     })
 
     expect(renameSession).toHaveBeenCalledWith('session-1', 'Renamed Session')
-  })
-
-  it('keeps mobile navigation focused on chat sessions', async () => {
-    const onRequestClose = vi.fn()
-    createSession.mockResolvedValue('session-mobile-new')
-    useSessionStore.setState({
-      sessions: [
-        {
-          id: 'session-1',
-          title: 'Open Session',
-          createdAt: new Date().toISOString(),
-          modifiedAt: new Date().toISOString(),
-          messageCount: 1,
-          projectPath: '/workspace/project',
-          workDir: '/workspace/project',
-          workDirExists: true,
-        },
-      ],
-    })
-
-    render(<Sidebar isMobile onRequestClose={onRequestClose} />)
-
-    expect(screen.queryByRole('button', { name: 'Scheduled' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
-
-    fireEvent.click(getSessionMainButton(/Open Session/))
-    expect(onRequestClose).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'New Session' }))
-    })
-
-    await waitFor(() => {
-      expect(createSession).toHaveBeenCalled()
-    })
-    expect(onRequestClose).toHaveBeenCalledTimes(2)
   })
 
   it('shows a loading state instead of an empty session list while initial fetch is pending', () => {

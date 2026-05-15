@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { ConversationService, ConversationStartupError, conversationService } from '../services/conversationService.js'
 import { SessionService, sessionService } from '../services/sessionService.js'
 import { ProviderService } from '../services/providerService.js'
+import { CCHAHATUI_PROJECT_CONFIG_DIR_ENV } from '../../utils/cchahatuiConfig.js'
 
 async function rmWithRetry(targetPath: string): Promise<void> {
   const attempts = process.platform === 'win32' ? 5 : 1
@@ -325,10 +326,12 @@ describe('ConversationService', () => {
 
   it('should reconstruct usage and metadata from a persisted transcript', async () => {
     const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    const previousProjectConfigDir = process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
     const previousAnthropicApiKey = process.env.ANTHROPIC_API_KEY
     const tmpConfigDir = await fs.mkdtemp(path.join(os.tmpdir(), 'claude-transcript-'))
     const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'claude-workdir-'))
     process.env.CLAUDE_CONFIG_DIR = tmpConfigDir
+    process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = tmpConfigDir
     process.env.ANTHROPIC_API_KEY = 'test-key'
 
     try {
@@ -380,6 +383,11 @@ describe('ConversationService', () => {
       } else {
         process.env.CLAUDE_CONFIG_DIR = previousConfigDir
       }
+      if (previousProjectConfigDir === undefined) {
+        delete process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
+      } else {
+        process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = previousProjectConfigDir
+      }
       if (previousAnthropicApiKey === undefined) {
         delete process.env.ANTHROPIC_API_KEY
       } else {
@@ -392,10 +400,12 @@ describe('ConversationService', () => {
 
   it('should reconstruct Sonnet 4.6 transcript usage before CLI config is initialized', async () => {
     const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    const previousProjectConfigDir = process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
     const previousNodeEnv = process.env.NODE_ENV
     const tmpConfigDir = await fs.mkdtemp(path.join(os.tmpdir(), 'claude-transcript-sonnet-'))
     const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'claude-workdir-sonnet-'))
     process.env.CLAUDE_CONFIG_DIR = tmpConfigDir
+    process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = tmpConfigDir
     process.env.NODE_ENV = 'development'
 
     try {
@@ -435,6 +445,11 @@ describe('ConversationService', () => {
         delete process.env.CLAUDE_CONFIG_DIR
       } else {
         process.env.CLAUDE_CONFIG_DIR = previousConfigDir
+      }
+      if (previousProjectConfigDir === undefined) {
+        delete process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
+      } else {
+        process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = previousProjectConfigDir
       }
       if (previousNodeEnv === undefined) {
         delete process.env.NODE_ENV
@@ -718,10 +733,13 @@ describe('WebSocket Chat Integration', () => {
     throw new Error(`Timed out waiting for ${label}`)
   }
   const originalCliPath = process.env.CLAUDE_CLI_PATH
+  const originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR
+  const originalProjectConfigDir = process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
 
   beforeAll(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'claude-conv-'))
     process.env.CLAUDE_CONFIG_DIR = tmpDir
+    process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = tmpDir
     process.env.CLAUDE_CLI_PATH = fileURLToPath(
       new URL('./fixtures/mock-sdk-cli.ts', import.meta.url)
     )
@@ -744,7 +762,10 @@ describe('WebSocket Chat Integration', () => {
     } else {
       delete process.env.CLAUDE_CLI_PATH
     }
-    delete process.env.CLAUDE_CONFIG_DIR
+    if (originalClaudeConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR
+    else process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir
+    if (originalProjectConfigDir === undefined) delete process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV]
+    else process.env[CCHAHATUI_PROJECT_CONFIG_DIR_ENV] = originalProjectConfigDir
   })
 
   it('should connect and receive connected event', async () => {

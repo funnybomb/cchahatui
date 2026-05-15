@@ -194,7 +194,7 @@ describe('Content-only pages render without errors', () => {
     expect(html).not.toContain('animate-spin')
   })
 
-  it('ContextUsageIndicator opens tap details in compact mobile mode', async () => {
+  it('ContextUsageIndicator refreshes context in compact mode', async () => {
     render(
       <ContextUsageIndicator
         chatState="idle"
@@ -207,9 +207,8 @@ describe('Content-only pages render without errors', () => {
 
     fireEvent.click(screen.getByLabelText('Context usage not calculated'))
 
-    expect(await screen.findByRole('button', { name: 'Close' })).toBeInTheDocument()
-    expect(screen.getAllByText('kimi-k2.6')).toHaveLength(2)
-    expect(screen.getAllByText('Context usage will be calculated after the session starts.')).toHaveLength(2)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByTestId('context-usage-indicator')).toHaveTextContent('--')
   })
 
   it('EmptySession plus menu exposes uploads and slash commands before chat starts', async () => {

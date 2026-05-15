@@ -28,16 +28,11 @@ type ProjectGroup = {
   empty: boolean
 }
 
-type SidebarProps = {
-  isMobile?: boolean
-  onRequestClose?: () => void
-}
-
 type SidebarContextMenu =
   | { kind: 'session'; id: string; x: number; y: number }
   | { kind: 'project'; projectPath: string; title: string; x: number; y: number }
 
-export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
+export function Sidebar() {
   const t = useTranslation()
   const sessions = useSessionStore((s) => s.sessions)
   const selectedProjects = useSessionStore((s) => s.selectedProjects)
@@ -290,24 +285,20 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
     startDraggingRef.current?.()
   }, [])
 
-  const expanded = isMobile ? true : sidebarOpen
-  const closeMobileDrawer = useCallback(() => {
-    if (isMobile) onRequestClose?.()
-  }, [isMobile, onRequestClose])
+  const expanded = sidebarOpen
 
   const createSessionForProject = useCallback(async (projectPath?: string) => {
     try {
       const sessionId = await useSessionStore.getState().createSession(projectPath)
       useTabStore.getState().openTab(sessionId, t('sidebar.newSession'))
       useChatStore.getState().connectToSession(sessionId)
-      closeMobileDrawer()
     } catch (error) {
       addToast({
         type: 'error',
         message: error instanceof Error ? error.message : t('sidebar.sessionListFailed'),
       })
     }
-  }, [addToast, closeMobileDrawer, t])
+  }, [addToast, t])
 
   const copyProjectPath = useCallback(async (projectPath: string) => {
     try {
@@ -411,28 +402,16 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
             >
               <GitHubIcon />
             </a>
-            {isMobile ? (
-              <button
-                type="button"
-                onClick={closeMobileDrawer}
-                className="sidebar-toggle-button flex h-11 w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-sidebar)]"
-                aria-label={t('sidebar.collapse')}
-                title={t('sidebar.collapse')}
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                data-testid={expanded ? 'sidebar-collapse-button' : 'sidebar-expand-button'}
-                className={`sidebar-toggle-button ${expanded ? 'sidebar-toggle-button--open h-8 w-8' : 'sidebar-toggle-button--collapsed h-8 w-8'} flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-sidebar)]`}
-                aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
-                title={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
-              >
-                <SidebarToggleIcon collapsed={!expanded} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              data-testid={expanded ? 'sidebar-collapse-button' : 'sidebar-expand-button'}
+              className={`sidebar-toggle-button ${expanded ? 'sidebar-toggle-button--open h-8 w-8' : 'sidebar-toggle-button--collapsed h-8 w-8'} flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-sidebar)]`}
+              aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
+              title={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
+            >
+              <SidebarToggleIcon collapsed={!expanded} />
+            </button>
           </div>
         </div>
       </div>
@@ -442,7 +421,6 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
           active={false}
           collapsed={!expanded}
           label={t('sidebar.newSession')}
-          touchFriendly={isMobile}
           onClick={() => {
             const currentTabId = useTabStore.getState().activeTabId
             const currentSession = currentTabId
@@ -455,21 +433,17 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
         >
           {t('sidebar.newSession')}
         </NavItem>
-        {!isMobile && (
-          <NavItem
-            active={activeTabId === SCHEDULED_TAB_ID}
-            collapsed={!expanded}
-            label={t('sidebar.scheduled')}
-            touchFriendly={isMobile}
-            onClick={() => {
-              useTabStore.getState().openTab(SCHEDULED_TAB_ID, t('sidebar.scheduled'), 'scheduled')
-              closeMobileDrawer()
-            }}
-            icon={<ClockIcon />}
-          >
-            {t('sidebar.scheduled')}
-          </NavItem>
-        )}
+        <NavItem
+          active={activeTabId === SCHEDULED_TAB_ID}
+          collapsed={!expanded}
+          label={t('sidebar.scheduled')}
+          onClick={() => {
+            useTabStore.getState().openTab(SCHEDULED_TAB_ID, t('sidebar.scheduled'), 'scheduled')
+          }}
+          icon={<ClockIcon />}
+        >
+          {t('sidebar.scheduled')}
+        </NavItem>
       </div>
 
       {expanded ? (
@@ -732,11 +706,10 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                                 }
                                 useTabStore.getState().openTab(session.id, session.title)
                                 useChatStore.getState().connectToSession(session.id)
-                                closeMobileDrawer()
                               }}
                               onContextMenu={(e) => handleSessionContextMenu(e, session.id)}
                               className={`
-                                group w-full rounded-[10px] px-3 ${isMobile ? 'py-3' : 'py-1.5'} text-left text-sm transition-colors duration-200
+                                group w-full rounded-[10px] px-3 py-1.5 text-left text-sm transition-colors duration-200
                                 ${selectedSessionIds.has(session.id)
                                   ? 'bg-[var(--color-sidebar-item-active)] text-[var(--color-text-primary)] ring-1 ring-[var(--color-brand)]/15'
                                   : session.id === activeTabId
@@ -818,33 +791,28 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
         <div className="flex-1" aria-hidden="true" />
       )}
 
-      {!isMobile && (
-        <div className={`border-t border-[var(--color-border)] p-3 ${expanded ? '' : 'flex justify-center'}`}>
-          <NavItem
-            active={false}
-            collapsed={!expanded}
-            label={t('shortcuts.title')}
-            touchFriendly={isMobile}
-            onClick={() => window.dispatchEvent(new CustomEvent('cchahatui:open-shortcuts-help'))}
-            icon={<span className="material-symbols-outlined text-[18px]">keyboard</span>}
-          >
-            {t('shortcuts.title')}
-          </NavItem>
-          <NavItem
-            active={activeTabId === SETTINGS_TAB_ID}
-            collapsed={!expanded}
-            label={t('sidebar.settings')}
-            touchFriendly={isMobile}
-            onClick={() => {
-              useTabStore.getState().openTab(SETTINGS_TAB_ID, t('sidebar.settings'), 'settings')
-              closeMobileDrawer()
-            }}
-            icon={<span className="material-symbols-outlined text-[18px]">settings</span>}
-          >
-            {t('sidebar.settings')}
-          </NavItem>
-        </div>
-      )}
+      <div className={`border-t border-[var(--color-border)] p-3 ${expanded ? '' : 'flex justify-center'}`}>
+        <NavItem
+          active={false}
+          collapsed={!expanded}
+          label={t('shortcuts.title')}
+          onClick={() => window.dispatchEvent(new CustomEvent('cchahatui:open-shortcuts-help'))}
+          icon={<span className="material-symbols-outlined text-[18px]">keyboard</span>}
+        >
+          {t('shortcuts.title')}
+        </NavItem>
+        <NavItem
+          active={activeTabId === SETTINGS_TAB_ID}
+          collapsed={!expanded}
+          label={t('sidebar.settings')}
+          onClick={() => {
+            useTabStore.getState().openTab(SETTINGS_TAB_ID, t('sidebar.settings'), 'settings')
+          }}
+          icon={<span className="material-symbols-outlined text-[18px]">settings</span>}
+        >
+          {t('sidebar.settings')}
+        </NavItem>
+      </div>
 
       <ProjectMemoryDialog
         open={memoryProject !== null}

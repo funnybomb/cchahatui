@@ -52,12 +52,13 @@ describe('sessionStore', () => {
       error: null,
       selectedProjects: [],
       availableProjects: [],
+      pendingSessionIds: new Set(),
     })
     useTabStore.setState({ tabs: [], activeTabId: null })
   })
 
   afterEach(() => {
-    useSessionStore.setState(initialState)
+    useSessionStore.setState({ ...initialState, pendingSessionIds: new Set() })
     useTabStore.setState({ tabs: [], activeTabId: null })
   })
 
@@ -122,6 +123,169 @@ describe('sessionStore', () => {
     await delay(0)
 
     expect(useSessionStore.getState().sessions[0]?.title).toBe('开始优化UI')
+  })
+
+  it('hides persisted empty placeholder sessions from fetched history', async () => {
+    listMock.mockResolvedValue({
+      sessions: [
+        {
+          id: 'empty-placeholder',
+          title: 'Untitled Session',
+          createdAt: '2026-05-07T00:00:00.000Z',
+          modifiedAt: '2026-05-07T00:00:01.000Z',
+          messageCount: 0,
+          projectPath: '',
+          workDir: '/workspace/project',
+          workDirExists: true,
+        },
+        {
+          id: 'named-empty',
+          title: 'Saved draft',
+          createdAt: '2026-05-07T00:00:00.000Z',
+          modifiedAt: '2026-05-07T00:00:02.000Z',
+          messageCount: 0,
+          projectPath: '',
+          workDir: '/workspace/project',
+          workDirExists: true,
+        },
+        {
+          id: 'real-session',
+          title: '开始优化UI',
+          createdAt: '2026-05-07T00:00:00.000Z',
+          modifiedAt: '2026-05-07T00:00:03.000Z',
+          messageCount: 2,
+          projectPath: '',
+          workDir: '/workspace/project',
+          workDirExists: true,
+        },
+      ],
+      total: 3,
+    })
+
+    await useSessionStore.getState().fetchSessions()
+
+    expect(useSessionStore.getState().sessions.map((session) => session.id)).toEqual([
+      'named-empty',
+      'real-session',
+    ])
+  })
+
+  it('preserves the active optimistic session when refresh returns only its empty placeholder', async () => {
+    createMock.mockResolvedValue({ sessionId: 'active-empty', workDir: '/workspace/project' })
+    listMock.mockResolvedValue({
+      sessions: [{
+        id: 'active-empty',
+        title: 'Untitled Session',
+        createdAt: '2026-05-07T00:00:00.000Z',
+        modifiedAt: '2026-05-07T00:00:01.000Z',
+        messageCount: 0,
+        projectPath: '',
+        workDir: '/workspace/project',
+        workDirExists: true,
+      }],
+      total: 1,
+    })
+
+    await useSessionStore.getState().createSession('/workspace/project')
+    await delay(0)
+
+    expect(useSessionStore.getState().sessions).toMatchObject([
+      {
+        id: 'active-empty',
+        title: 'New Session',
+        workDir: '/workspace/project',
+      },
+    ])
+  })
+
+  it('does not preserve a stale empty placeholder just because the legacy active session id still points at it', async () => {
+    useSessionStore.setState({
+      ...useSessionStore.getState(),
+      activeSessionId: 'stale-empty',
+      sessions: [{
+        id: 'stale-empty',
+        title: 'New Session',
+        createdAt: '2026-05-07T00:00:00.000Z',
+        modifiedAt: '2026-05-07T00:00:01.000Z',
+        messageCount: 0,
+        projectPath: '',
+        workDir: '/workspace/project',
+        workDirExists: true,
+      }],
+    })
+    useTabStore.setState({
+      tabs: [{
+        sessionId: 'real-session',
+        title: '已有历史',
+        type: 'session',
+        status: 'idle',
+      }],
+      activeTabId: 'real-session',
+    })
+    listMock.mockResolvedValue({
+      sessions: [
+        {
+          id: 'stale-empty',
+          title: 'Untitled Session',
+          createdAt: '2026-05-07T00:00:00.000Z',
+          modifiedAt: '2026-05-07T00:00:01.000Z',
+          messageCount: 0,
+          projectPath: '',
+          workDir: '/workspace/project',
+          workDirExists: true,
+        },
+        {
+          id: 'real-session',
+          title: '已有历史',
+          createdAt: '2026-05-07T00:00:00.000Z',
+          modifiedAt: '2026-05-07T00:00:02.000Z',
+          messageCount: 2,
+          projectPath: '',
+          workDir: '/workspace/project',
+          workDirExists: true,
+        },
+      ],
+      total: 2,
+    })
+
+    await useSessionStore.getState().fetchSessions()
+
+    expect(useSessionStore.getState().sessions.map((session) => session.id)).toEqual(['real-session'])
+  })
+
+  it('preserves a restored active empty tab even when it is not the legacy active session id', async () => {
+    useTabStore.setState({
+      tabs: [{
+        sessionId: 'restored-empty',
+        title: '恢复的草稿',
+        type: 'session',
+        status: 'idle',
+      }],
+      activeTabId: 'restored-empty',
+    })
+    listMock.mockResolvedValue({
+      sessions: [{
+        id: 'restored-empty',
+        title: 'Untitled Session',
+        createdAt: '2026-05-07T00:00:00.000Z',
+        modifiedAt: '2026-05-07T00:00:01.000Z',
+        messageCount: 0,
+        projectPath: '',
+        workDir: '/workspace/project',
+        workDirExists: true,
+      }],
+      total: 1,
+    })
+
+    await useSessionStore.getState().fetchSessions()
+
+    expect(useSessionStore.getState().sessions).toMatchObject([
+      {
+        id: 'restored-empty',
+        title: '恢复的草稿',
+        workDir: '/workspace/project',
+      },
+    ])
   })
 
   it('syncs refreshed session titles into already-open tabs', async () => {

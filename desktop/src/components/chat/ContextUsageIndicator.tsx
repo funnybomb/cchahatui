@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sessionsApi, type SessionContextSnapshot } from '../../api/sessions'
 import { useTranslation } from '../../i18n'
 import type { ChatState } from '../../types/chat'
-import { MobileBottomSheet } from '../shared/MobileBottomSheet'
 
 type Props = {
   sessionId?: string
@@ -70,7 +69,6 @@ export function ContextUsageIndicator({
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
   const [inspectionModel, setInspectionModel] = useState<string | null>(null)
-  const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false)
   const requestSeq = useRef(0)
   const contextIdentityRef = useRef('')
 
@@ -175,9 +173,6 @@ export function ContextUsageIndicator({
         type="button"
         aria-label={ariaLabel}
         onClick={() => {
-          if (compact) {
-            setMobileDetailsOpen(true)
-          }
           void refresh()
         }}
         title={t('contextIndicator.title')}
@@ -277,81 +272,6 @@ export function ContextUsageIndicator({
           </div>
         )}
       </div>
-
-      {compact && (
-        <MobileBottomSheet
-          open={mobileDetailsOpen}
-          onClose={() => setMobileDetailsOpen(false)}
-          title={t('contextIndicator.title')}
-          closeLabel={t('tabs.close')}
-          ariaLabel={t('contextIndicator.title')}
-          headerExtra={(
-            <div className="truncate text-base font-semibold text-[var(--color-text-primary)]">
-              {displayModel ?? t('contextIndicator.modelUnknown')}
-            </div>
-          )}
-          contentClassName="p-4"
-        >
-          <div className="flex items-end justify-between gap-4">
-            <div className="font-mono text-4xl font-semibold text-[var(--color-text-primary)]">
-              {displayContext ? formatPercent(percentage) : '--'}
-            </div>
-            {contextSource === 'estimate' && (
-              <span className="mb-1 rounded-full border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
-                {t('contextIndicator.estimate')}
-              </span>
-            )}
-          </div>
-
-          {displayContext ? (
-            <div className="mt-5">
-              <div className="grid grid-cols-3 gap-2 font-mono text-xs">
-                <div className="rounded-xl bg-[var(--color-surface-container)] p-3">
-                  <div className="text-[var(--color-text-tertiary)]">{t('contextIndicator.used')}</div>
-                  <div className="mt-1 text-[var(--color-text-primary)]">{formatNumber(usedTokens)}</div>
-                </div>
-                <div className="rounded-xl bg-[var(--color-surface-container)] p-3">
-                  <div className="text-[var(--color-text-tertiary)]">{t('contextIndicator.free')}</div>
-                  <div className="mt-1 text-[var(--color-text-primary)]">{formatNumber(freeTokens)}</div>
-                </div>
-                <div className="rounded-xl bg-[var(--color-surface-container)] p-3">
-                  <div className="text-[var(--color-text-tertiary)]">{t('contextIndicator.window')}</div>
-                  <div className="mt-1 text-[var(--color-text-primary)]">{maxTokens > 0 ? formatNumber(maxTokens) : '--'}</div>
-                </div>
-              </div>
-              {details.length > 0 && (
-                <div className="mt-5 space-y-3">
-                  {details.map((category) => {
-                    const percent = maxTokens > 0 ? Math.max(0.5, Math.min(100, (category.tokens / maxTokens) * 100)) : 0
-                    return (
-                      <div key={category.name}>
-                        <div className="flex items-center justify-between gap-3 text-xs">
-                          <span className="min-w-0 truncate text-[var(--color-text-secondary)]">{category.name}</span>
-                          <span className="shrink-0 font-mono text-[var(--color-text-tertiary)]">{formatNumber(category.tokens)}</span>
-                        </div>
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-container)]">
-                          <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: category.color }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-              <div className="mt-4 text-[11px] text-[var(--color-text-tertiary)]">
-                {formatUpdatedAt(updatedAt, t)}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-5 rounded-xl bg-[var(--color-surface-container)] p-4 text-sm leading-6 text-[var(--color-text-secondary)]">
-              {isPendingContext
-                ? t('contextIndicator.pendingDetail')
-                : loading
-                  ? t('contextIndicator.loading')
-                  : t('contextIndicator.unavailableDetail')}
-            </div>
-          )}
-        </MobileBottomSheet>
-      )}
     </div>
   )
 }

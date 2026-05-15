@@ -27,8 +27,6 @@ import { WorkspacePanel } from '../components/workspace/WorkspacePanel'
 import { TeamStatusBar } from '../components/teams/TeamStatusBar'
 import { TerminalSettings } from './TerminalSettings'
 import type { SessionListItem } from '../types/session'
-import { useMobileViewport } from '../hooks/useMobileViewport'
-import { isTauriRuntime } from '../lib/desktopRuntime'
 import { getProjectDisplayName } from '../lib/projectDisplay'
 
 const TASK_POLL_INTERVAL_MS = 1000
@@ -205,7 +203,6 @@ function TerminalResizeHandle() {
 }
 
 export function ActiveSession() {
-  const isMobileLayout = useMobileViewport() && !isTauriRuntime()
   const activeTabId = useTabStore((s) => s.activeTabId)
   const activeTabType = useTabStore((s) => s.tabs.find((tab) => tab.sessionId === s.activeTabId)?.type ?? null)
   const sessions = useSessionStore((s) => s.sessions)
@@ -231,12 +228,12 @@ export function ActiveSession() {
     sessionProjectPath ? memoryEntryHasContent(state.memories[sessionProjectPath]) : false,
   )
   const showWorkspacePanel = useWorkspacePanelStore((state) =>
-    activeTabId && isSessionTabState(activeTabId, activeTabType) && !isMemberSession && !isMobileLayout
+    activeTabId && isSessionTabState(activeTabId, activeTabType) && !isMemberSession
       ? state.isPanelOpen(activeTabId)
       : false,
   )
   const showTerminalPanel = useTerminalPanelStore((state) =>
-    activeTabId && isSessionTabState(activeTabId, activeTabType) && !isMemberSession && !isMobileLayout
+    activeTabId && isSessionTabState(activeTabId, activeTabType) && !isMemberSession
       ? state.isPanelOpen(activeTabId)
       : false,
   )
@@ -314,7 +311,7 @@ export function ActiveSession() {
       <div data-testid="active-session-content-row" className="flex min-h-0 min-w-0 flex-1">
         <div
           data-testid="active-session-chat-column"
-          className={`active-session-chat-column ${showWorkspacePanel ? CHAT_COLUMN_WITH_WORKSPACE_CLASS : isMobileLayout ? 'min-w-0 flex-1 flex flex-col' : 'chat-column-standalone flex flex-col'}`}
+          className={`active-session-chat-column ${showWorkspacePanel ? CHAT_COLUMN_WITH_WORKSPACE_CLASS : 'chat-column-standalone flex flex-col'}`}
         >
           {isMemberSession && (
             <div className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface-container)]">
@@ -388,7 +385,7 @@ export function ActiveSession() {
             </div>
           ) : (
             <>
-              {!isMemberSession && !isMobileLayout && (
+              {!isMemberSession && (
                 <div
                   className={
                     showWorkspacePanel

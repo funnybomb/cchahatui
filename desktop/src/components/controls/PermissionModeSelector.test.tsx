@@ -2,18 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@testing-library/jest-dom'
 
-const viewportMocks = vi.hoisted(() => ({
-  isMobile: false,
-}))
-
-vi.mock('../../hooks/useMobileViewport', () => ({
-  useMobileViewport: () => viewportMocks.isMobile,
-}))
-
-vi.mock('../../lib/desktopRuntime', () => ({
-  isTauriRuntime: () => false,
-}))
-
 vi.mock('../../i18n', () => ({
   useTranslation: () => (key: string) => ({
     'permMode.askPermissions': 'Ask permissions',
@@ -47,21 +35,18 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useTabStore } from '../../stores/tabStore'
 
-describe('PermissionModeSelector mobile access', () => {
+describe('PermissionModeSelector compact access', () => {
   beforeEach(() => {
-    viewportMocks.isMobile = false
     useSettingsStore.setState({ permissionMode: 'default' })
     useSessionStore.setState({ sessions: [], activeSessionId: null })
     useTabStore.setState({ activeTabId: null, tabs: [] })
   })
 
-  it('labels the compact mobile trigger and opens a phone-sized menu sheet', () => {
-    viewportMocks.isMobile = true
-
+  it('labels the compact trigger and opens the desktop menu', () => {
     render(<PermissionModeSelector compact workDir="/repo" />)
 
     const trigger = screen.getByRole('button', { name: 'Ask permissions' })
-    expect(trigger).toHaveClass('h-11', 'w-11')
+    expect(trigger).toHaveClass('h-8', 'w-8')
     expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
@@ -69,8 +54,7 @@ describe('PermissionModeSelector mobile access', () => {
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(trigger).toHaveAttribute('aria-controls', 'permission-mode-menu')
-    expect(screen.getByRole('dialog', { name: 'Execution Permissions' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Auto accept edits/ })).toBeInTheDocument()
   })
 })

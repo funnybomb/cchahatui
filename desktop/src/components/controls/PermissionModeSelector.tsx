@@ -7,9 +7,6 @@ import { useSessionStore } from '../../stores/sessionStore'
 import { useTabStore } from '../../stores/tabStore'
 import { useTranslation } from '../../i18n'
 import type { PermissionMode } from '../../types/settings'
-import { useMobileViewport } from '../../hooks/useMobileViewport'
-import { isTauriRuntime } from '../../lib/desktopRuntime'
-import { MobileBottomSheet } from '../shared/MobileBottomSheet'
 
 const MODE_ICONS: Record<PermissionMode, string> = {
   default: 'verified_user',
@@ -30,7 +27,6 @@ type Props = {
 
 export function PermissionModeSelector({ workDir: workDirProp, compact = false, value, onChange }: Props = {}) {
   const t = useTranslation()
-  const isMobile = useMobileViewport() && !isTauriRuntime()
   const { permissionMode: storeMode, setPermissionMode } = useSettingsStore()
   const setSessionPermissionMode = useChatStore((s) => s.setSessionPermissionMode)
   const activeTabId = useTabStore((s) => s.activeTabId)
@@ -90,9 +86,7 @@ export function PermissionModeSelector({ workDir: workDirProp, compact = false, 
   const activeSession = sessions.find((s) => s.id === activeSessionId)
   const workDir = workDirProp || activeSession?.workDir || '~'
   const compactButtonClass = compact
-    ? isMobile
-      ? 'h-11 w-11 justify-center rounded-xl p-0'
-      : 'h-8 w-8 justify-center rounded-full p-0'
+    ? 'h-8 w-8 justify-center rounded-full p-0'
     : 'gap-1.5 rounded-full px-2.5 py-1.5 text-xs'
   const menuId = 'permission-mode-menu'
 
@@ -120,7 +114,7 @@ export function PermissionModeSelector({ workDir: workDirProp, compact = false, 
   }, [open])
 
   const permissionOptions = (
-    <div id={menuId} ref={menuRef} role="menu">
+    <>
       {PERMISSION_ITEMS.map((item) => (
         <button
           key={item.value}
@@ -159,7 +153,7 @@ export function PermissionModeSelector({ workDir: workDirProp, compact = false, 
           )}
         </button>
       ))}
-    </div>
+    </>
   )
 
   const menuContent = (
@@ -194,29 +188,16 @@ export function PermissionModeSelector({ workDir: workDirProp, compact = false, 
       </button>
 
       {open && (
-        isMobile ? (
-          <MobileBottomSheet
-            open={open}
-            onClose={() => setOpen(false)}
-            title={t('permMode.executionPermissions')}
-            closeLabel={t('tabs.close')}
-            ariaLabel={t('permMode.executionPermissions')}
-            contentClassName="py-2"
-          >
-            {permissionOptions}
-          </MobileBottomSheet>
-        ) : (
-          <div id={menuId} ref={menuRef} role="menu" className="absolute left-0 bottom-full mb-2 w-[320px] rounded-xl bg-[var(--color-surface-container-lowest)] border border-[var(--color-border)] shadow-[var(--shadow-dropdown)] z-50 py-2">
-            {menuContent}
-          </div>
-        )
+        <div id={menuId} ref={menuRef} role="menu" className="absolute left-0 bottom-full z-50 mb-2 w-[320px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-container-lowest)] py-2 shadow-[var(--shadow-dropdown)]">
+          {menuContent}
+        </div>
       )}
 
       {/* Bypass confirmation dialog */}
       {confirmDialog && createPortal(
-        <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/40 ${isMobile ? 'px-4' : 'pl-[var(--sidebar-width)] pr-4'}`} onClick={() => setConfirmDialog(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 pl-[var(--sidebar-width)] pr-4" onClick={() => setConfirmDialog(false)}>
           <div
-            className={`${isMobile ? 'w-full max-w-md' : 'w-[420px]'} rounded-2xl bg-[var(--color-surface-container-lowest)] border border-[var(--color-border)] shadow-[var(--shadow-dropdown)] overflow-hidden`}
+            className="w-[420px] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-container-lowest)] shadow-[var(--shadow-dropdown)]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

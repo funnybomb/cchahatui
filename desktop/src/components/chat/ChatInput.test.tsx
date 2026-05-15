@@ -2,10 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@testing-library/jest-dom'
 
-const viewportMocks = vi.hoisted(() => ({
-  isMobile: false,
-}))
-
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   delete: vi.fn(),
@@ -48,10 +44,6 @@ vi.mock('../../api/websocket', () => ({
     clearHandlers: vi.fn(),
     send: mocks.wsSend,
   },
-}))
-
-vi.mock('../../hooks/useMobileViewport', () => ({
-  useMobileViewport: () => viewportMocks.isMobile,
 }))
 
 vi.mock('../controls/PermissionModeSelector', () => ({
@@ -115,7 +107,6 @@ describe('ChatInput file mentions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.localStorage.clear()
-    viewportMocks.isMobile = false
     useSettingsStore.setState({ locale: 'en' })
     useChatStore.setState(initialChatState, true)
     useSessionStore.setState(initialSessionState, true)
@@ -489,43 +480,4 @@ describe('ChatInput file mentions', () => {
     expect(mocks.wsSend.mock.calls[0]?.[1].content).not.toContain('Keep this saved.')
   })
 
-  it('uses larger icon-only mobile action buttons for browser H5 access', async () => {
-    viewportMocks.isMobile = true
-    mocks.search.mockResolvedValueOnce({
-      currentPath: '/repo',
-      parentPath: null,
-      query: 'cond',
-      entries: [
-        { name: 'conditions.py', path: '/repo/conditions.py', isDirectory: false },
-      ],
-    })
-
-    render(<ChatInput />)
-
-    await waitFor(() => {
-      expect(mocks.getGitInfo).toHaveBeenCalledWith(sessionId)
-    })
-
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'ship it', selectionStart: 7 },
-    })
-
-    expect(screen.getByRole('button', { name: 'Open composer tools' })).toHaveClass('h-11', 'w-11')
-    expect(screen.getByRole('button', { name: 'Run' })).toHaveClass('h-11', 'w-11')
-    expect(screen.queryByText('Run')).not.toBeInTheDocument()
-    expect(screen.getByTestId('chat-input-shell')).toHaveClass('px-3')
-    expect(screen.getByTestId('chat-input-shell').className).toContain('safe-area-inset-bottom')
-    expect(screen.getByTestId('chat-input-panel')).toHaveClass('rounded-2xl')
-    expect(screen.getByTestId('chat-input-panel')).not.toHaveClass('rounded-b-none')
-
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: '@cond', selectionStart: 5 },
-    })
-
-    expect(await screen.findByText('conditions.py')).toBeInTheDocument()
-    const fileSearchMenu = document.getElementById('file-search-menu')
-    expect(fileSearchMenu).toHaveClass('min-w-0')
-    expect(fileSearchMenu).not.toHaveClass('min-w-[480px]')
-    expect(fileSearchMenu).not.toHaveTextContent('Navigate')
-  })
 })

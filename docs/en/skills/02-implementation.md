@@ -1,4 +1,4 @@
-# Claude Code Skills System -- Implementation Details
+# cchahatui Skills System -- Implementation Details
 
 > A deep dive into how Skills are discovered, loaded, injected, executed, and managed.
 
@@ -91,9 +91,9 @@ const loadAllCommands = memoize(async (cwd: string): Promise<Command[]> => {
 ```
 getSkillDirCommands(cwd)
 ├─ Determine loading paths
-│  ├─ managed: ${MANAGED_PATH}/.claude/skills/
-│  ├─ user:    ~/.claude/skills/
-│  ├─ project: .claude/skills/ (traverse upward to HOME)
+│  ├─ managed: ${MANAGED_PATH}/.cchahatui/skills/
+│  ├─ user:    ~/Library/Application Support/cchahatui/config/skills/
+│  ├─ project: .cchahatui/skills/ (traverse upward to HOME)
 │  └─ additional: paths specified via --add-dir
 │
 ├─ Parallel loading (Promise.all)
@@ -647,7 +647,7 @@ export async function discoverSkillDirsForPaths(
     let currentDir = dirname(filePath)
     // Traverse upward from the file's directory to cwd (excluding cwd itself)
     while (currentDir.startsWith(resolvedCwd + pathSep)) {
-      const skillDir = join(currentDir, '.claude', 'skills')
+      const skillDir = join(currentDir, '.cchahatui', 'skills')
       if (!dynamicSkillDirs.has(skillDir)) {
         dynamicSkillDirs.add(skillDir)
         await fs.stat(skillDir)  // Check if it exists

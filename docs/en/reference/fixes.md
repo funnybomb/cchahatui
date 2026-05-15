@@ -1,7 +1,7 @@
 # Public Upstream Integration Notes
 
 
-cchahatui is developed from the public cc-haha and DeepSeek-TUI projects. To integrate the desktop workspace, Agents/Skills/MCP, Computer Use, remote access, and DeepSeek-first model experience into an independent product, this repository keeps and adapts the following compatibility fixes:
+cchahatui is developed from the public cc-haha and DeepSeek-TUI projects. To integrate the desktop workspace, Agents/Skills/MCP, Computer Use, and DeepSeek-first model experience into an independent product, this repository keeps and adapts the following compatibility fixes:
 
 | Issue | Root cause | Fix |
 |------|------|------|

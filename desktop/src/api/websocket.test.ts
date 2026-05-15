@@ -2,12 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const clientMocks = vi.hoisted(() => ({
   baseUrl: 'http://127.0.0.1:3456',
-  authToken: null as string | null,
 }))
 
 vi.mock('./client', () => ({
   getBaseUrl: () => clientMocks.baseUrl,
-  getAuthToken: () => clientMocks.authToken,
 }))
 
 import { buildSessionWebSocketUrl, wsManager } from './websocket'
@@ -60,7 +58,6 @@ describe('wsManager reconnect buffering', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     clientMocks.baseUrl = 'http://127.0.0.1:3456'
-    clientMocks.authToken = null
     FakeWebSocket.instances = []
     globalThis.WebSocket = FakeWebSocket as unknown as typeof WebSocket
     wsManager.disconnectAll()
@@ -98,28 +95,27 @@ describe('wsManager reconnect buffering', () => {
     ])
   })
 
-  it('builds websocket URLs from http and encodes token query params', () => {
-    clientMocks.baseUrl = 'http://10.0.0.2:3456'
-    clientMocks.authToken = 'h5 token/with?chars'
+  it('builds websocket URLs from http without auth query params', () => {
+    clientMocks.baseUrl = 'http://127.0.0.1:3456'
 
     expect(buildSessionWebSocketUrl('session-reconnect')).toBe(
-      'ws://10.0.0.2:3456/ws/session-reconnect?token=h5+token%2Fwith%3Fchars',
+      'ws://127.0.0.1:3456/ws/session-reconnect',
     )
   })
 
-  it('upgrades https backends to wss', () => {
-    clientMocks.baseUrl = 'https://remote.example.com'
+  it('upgrades local https backends to wss', () => {
+    clientMocks.baseUrl = 'https://localhost:3456'
 
     expect(buildSessionWebSocketUrl('secure-session')).toBe(
-      'wss://remote.example.com/ws/secure-session',
+      'wss://localhost:3456/ws/secure-session',
     )
   })
 
-  it('preserves reverse-proxy subpaths when building websocket URLs', () => {
-    clientMocks.baseUrl = 'https://public.example.com/app'
+  it('preserves local base-path prefixes when building websocket URLs', () => {
+    clientMocks.baseUrl = 'http://127.0.0.1:3456/app'
 
     expect(buildSessionWebSocketUrl('s1')).toBe(
-      'wss://public.example.com/app/ws/s1',
+      'ws://127.0.0.1:3456/app/ws/s1',
     )
   })
 })

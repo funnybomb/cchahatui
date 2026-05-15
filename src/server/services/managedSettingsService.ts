@@ -10,7 +10,10 @@ import { getCchahatuiManagedConfigPathForDir } from '../../utils/cchahatuiConfig
 export class ManagedSettingsService {
   private static writeLocks = new Map<string, Promise<void>>()
 
+  constructor(private readonly configDir?: string) {}
+
   private getConfigDir(): string {
+    if (this.configDir) return this.configDir
     return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
   }
 

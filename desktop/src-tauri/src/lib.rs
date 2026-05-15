@@ -218,7 +218,7 @@ mod macos_notifications {
 }
 
 const SERVER_STARTUP_LOG_LIMIT: usize = 80;
-const SERVER_BIND_HOST: &str = "0.0.0.0";
+const SERVER_BIND_HOST: &str = "127.0.0.1";
 const SERVER_CONTROL_HOST: &str = "127.0.0.1";
 const APP_DISPLAY_NAME: &str = "cchahatui";
 const APP_CONFIG_DIR_NAME: &str = "config";
@@ -1193,41 +1193,15 @@ fn resolve_app_root(_app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-fn select_h5_dist_dir(resource_dir: Option<&Path>, app_root: &Path) -> PathBuf {
-    let mut candidates = Vec::new();
-    if let Some(resource_dir) = resource_dir {
-        candidates.push(resource_dir.join("_up_").join("dist"));
-        candidates.push(resource_dir.join("dist"));
-    }
-    candidates.push(app_root.join("../Resources/_up_/dist"));
-    candidates.push(app_root.join("../Resources/dist"));
-
-    candidates
-        .iter()
-        .find(|candidate| candidate.join("index.html").is_file())
-        .cloned()
-        .unwrap_or_else(|| {
-            resource_dir
-                .map(|dir| dir.join("_up_").join("dist"))
-                .unwrap_or_else(|| app_root.join("../Resources/_up_/dist"))
-        })
-}
-
-fn resolve_h5_dist_dir(app: &AppHandle, app_root: &Path) -> PathBuf {
-    let resource_dir = app.path().resource_dir().ok();
-    select_h5_dist_dir(resource_dir.as_deref(), app_root)
-}
-
 fn start_server_sidecar(app: &AppHandle) -> Result<ServerRuntime, String> {
     let bind_host = SERVER_BIND_HOST;
     let control_host = SERVER_CONTROL_HOST;
     let port = reserve_local_port(bind_host)?;
     let url = format!("http://{control_host}:{port}");
     let app_root = resolve_app_root(app)?;
-    let app_root_arg = app_root.to_string_lossy().to_string();
-    let h5_dist_dir = resolve_h5_dist_dir(app, &app_root)
-        .to_string_lossy()
-        .to_string();
+    let app_root_arg = format!("--app-root={}", app_root.to_string_lossy());
+    let host_arg = format!("--host={bind_host}");
+    let port_arg = format!("--port={port}");
 
     // 单一合并 sidecar：第一个参数选 server / cli / adapters 模式。
     let mut sidecar = app
@@ -1237,17 +1211,11 @@ fn start_server_sidecar(app: &AppHandle) -> Result<ServerRuntime, String> {
     for (key, value) in terminal_environment(&default_shell()) {
         sidecar = sidecar.env(key, value);
     }
-    sidecar = sidecar
-        .env("CLAUDE_H5_AUTO_PUBLIC_URL", "1")
-        .env("CLAUDE_H5_DIST_DIR", h5_dist_dir);
     let sidecar = sidecar.args([
         "server",
-        "--app-root",
         &app_root_arg,
-        "--host",
-        bind_host,
-        "--port",
-        &port.to_string(),
+        &host_arg,
+        &port_arg,
     ]);
 
     let startup_logs = Arc::new(Mutex::new(VecDeque::new()));
@@ -1484,10 +1452,9 @@ mod tests {
     use super::{
         decode_terminal_output, default_utf8_locale, ensure_utf8_locale,
         has_meaningful_intersection, is_persistable_window_state, parse_env_block,
-        run_notification_bridge, select_h5_dist_dir, StoredWindowState, SERVER_BIND_HOST,
-        SERVER_CONTROL_HOST,
+        run_notification_bridge, StoredWindowState, SERVER_BIND_HOST, SERVER_CONTROL_HOST,
     };
-    use std::{collections::HashMap, fs};
+    use std::collections::HashMap;
 
     #[test]
     fn window_state_rejects_too_small_sizes() {
@@ -1625,31 +1592,9 @@ mod tests {
     }
 
     #[test]
-    fn server_sidecar_binds_lan_but_reports_loopback_control_url() {
-        assert_eq!(SERVER_BIND_HOST, "0.0.0.0");
+    fn server_sidecar_binds_loopback_and_reports_loopback_control_url() {
+        assert_eq!(SERVER_BIND_HOST, "127.0.0.1");
         assert_eq!(SERVER_CONTROL_HOST, "127.0.0.1");
-    }
-
-    #[test]
-    fn h5_dist_dir_prefers_tauri_parent_resource_mapping() {
-        let root = std::env::temp_dir().join(format!(
-            "cchh-h5-dist-test-{}",
-            std::process::id()
-        ));
-        let resource_dir = root.join("Contents").join("Resources");
-        let app_root = root.join("Contents").join("MacOS");
-        let mapped_dist = resource_dir.join("_up_").join("dist");
-
-        fs::create_dir_all(&mapped_dist).expect("create mapped dist dir");
-        fs::create_dir_all(&app_root).expect("create app root dir");
-        fs::write(mapped_dist.join("index.html"), "").expect("write h5 shell");
-
-        assert_eq!(
-            select_h5_dist_dir(Some(&resource_dir), &app_root),
-            mapped_dist
-        );
-
-        fs::remove_dir_all(root).expect("remove temp app tree");
     }
 
     #[test]

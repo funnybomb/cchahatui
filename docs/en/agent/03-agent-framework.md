@@ -372,7 +372,7 @@ Use cases include:
 
 ### 5.1 Skills System
 
-Skills are one of Claude Code's most powerful extension mechanisms. They're not simple "command aliases" but **complete AI behavior definitions**.
+Skills are one of cchahatui's extension mechanisms. They're not simple "command aliases" but **complete AI behavior definitions**.
 
 #### Skill Definition Structure
 
@@ -404,9 +404,9 @@ Bundled skills (bundled)          ← Compiled into CLI, 15+
   ↓
 Plugin skills (plugin)            ← Plugin-registered
   ↓
-User skills (~/.claude/skills/)   ← User-global
+User skills (cchahatui user config / skills)   ← User-global
   ↓
-Project skills (.claude/skills/)  ← Project-level
+Project skills (.cchahatui/skills/)  ← Project-level
   ↓
 Policy skills (policy)            ← Organization-managed
 ```

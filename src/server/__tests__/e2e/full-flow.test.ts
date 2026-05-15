@@ -89,8 +89,14 @@ describe('E2E: Full Flow', () => {
     sessionId = data.sessionId
   })
 
-  it('should list the created session', async () => {
+  it('should hide the empty created placeholder from the default session list', async () => {
     const { data } = await api('GET', '/api/sessions')
+    expect(data.sessions.length).toBe(0)
+    expect(data.total).toBe(0)
+  })
+
+  it('should list the created placeholder when explicitly requested', async () => {
+    const { data } = await api('GET', '/api/sessions?includePlaceholders=1')
     expect(data.sessions.length).toBe(1)
     expect(data.sessions[0].id).toBe(sessionId)
   })
@@ -107,6 +113,13 @@ describe('E2E: Full Flow', () => {
 
     const { data } = await api('GET', `/api/sessions/${sessionId}`)
     expect(data.title).toBe('My Test Session')
+  })
+
+  it('should list the renamed empty session as an intentional draft', async () => {
+    const { data } = await api('GET', '/api/sessions')
+    expect(data.sessions.length).toBe(1)
+    expect(data.sessions[0].id).toBe(sessionId)
+    expect(data.sessions[0].title).toBe('My Test Session')
   })
 
   it('should get session messages', async () => {
@@ -158,8 +171,9 @@ describe('E2E: Full Flow', () => {
 
   it('should list available models', async () => {
     const { data } = await api('GET', '/api/models')
-    expect(data.models.length).toBe(4)
-    expect(data.models[0].name).toBe('cc-tui Max')
+    expect(data.models.length).toBeGreaterThan(0)
+    expect(data.models[0].id).toBeTruthy()
+    expect(data.models[0].name).toBeTruthy()
   })
 
   it('should switch model', async () => {

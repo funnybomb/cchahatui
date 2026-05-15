@@ -48,6 +48,10 @@ export function parseLauncherArgs(
 
   for (let index = 0; index < rawArgs.length; index++) {
     const arg = rawArgs[index]
+    if (arg?.startsWith('--app-root=')) {
+      appRoot = arg.slice('--app-root='.length)
+      continue
+    }
     if (arg === '--app-root') {
       appRoot = rawArgs[index + 1] ?? null
       index += 1

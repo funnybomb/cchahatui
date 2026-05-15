@@ -19,6 +19,7 @@ type SessionStore = {
   availableProjects: string[]
   isBatchMode: boolean
   selectedSessionIds: Set<string>
+  pendingSessionIds: Set<string>
 
   fetchSessions: (project?: string) => Promise<void>
   createSession: (workDir?: string, options?: CreateSessionOptions) => Promise<string>
@@ -45,6 +46,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   availableProjects: [],
   isBatchMode: false,
   selectedSessionIds: new Set(),
+  pendingSessionIds: new Set(),
 
   fetchSessions: async (project?: string) => {
     set({ isLoading: true, error: null })
@@ -58,13 +60,27 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         const currentById = new Map(state.sessions.map((session) => [session.id, session]))
         // Deduplicate by session ID - keep the most recently modified entry.
         const byId = new Map<string, SessionListItem>()
-        for (const s of raw) {
+        for (const s of raw.filter((session) => !isPersistedEmptyPlaceholderSession(session))) {
           const current = currentById.get(s.id)
           const candidate = preserveLocalTitle(current, s)
           const existing = byId.get(s.id)
           if (!existing || new Date(candidate.modifiedAt) > new Date(existing.modifiedAt)) {
             byId.set(s.id, candidate)
           }
+        }
+        const pendingSessionIds = new Set(state.pendingSessionIds)
+        const { activeTabId, tabs } = useTabStore.getState()
+        const activeSessionTab = activeTabId
+          ? tabs.find((tab) => tab.sessionId === activeTabId && tab.type === 'session')
+          : undefined
+        const sessionIdsToKeep = new Set(pendingSessionIds)
+        if (activeSessionTab) sessionIdsToKeep.add(activeSessionTab.sessionId)
+
+        for (const sessionId of sessionIdsToKeep) {
+          const session = currentById.get(sessionId) ?? raw.find((candidate) => candidate.id === sessionId)
+          if (!session || session.messageCount !== 0 || byId.has(session.id)) continue
+          const tab = activeSessionTab?.sessionId === sessionId ? activeSessionTab : undefined
+          byId.set(session.id, preserveTabTitle(tab, session))
         }
         const sessions = [...byId.values()]
         syncedSessions = sessions
@@ -74,7 +90,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             ...projects.map((p) => p.projectPath),
           ].filter((projectPath): projectPath is string => Boolean(projectPath))),
         ].sort()
-        return { sessions, availableProjects, isLoading: false }
+        return {
+          sessions,
+          availableProjects,
+          isLoading: false,
+          pendingSessionIds: removeIdsFromSet(state.pendingSessionIds, [...pendingSessionIds]),
+        }
       })
       syncOpenSessionTabTitles(syncedSessions)
     } catch (err) {
@@ -104,6 +125,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         ? state.sessions
         : [optimisticSession, ...state.sessions],
       activeSessionId: id,
+      pendingSessionIds: new Set(state.pendingSessionIds).add(id),
     }))
 
     void get().fetchSessions()
@@ -117,6 +139,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       sessions: s.sessions.filter((session) => session.id !== id),
       activeSessionId: s.activeSessionId === id ? null : s.activeSessionId,
       selectedSessionIds: removeIdsFromSet(s.selectedSessionIds, [id]),
+      pendingSessionIds: removeIdsFromSet(s.pendingSessionIds, [id]),
     }))
   },
 
@@ -132,6 +155,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         ? null
         : s.activeSessionId,
       selectedSessionIds: removeIdsFromSet(s.selectedSessionIds, result.successes),
+      pendingSessionIds: removeIdsFromSet(s.pendingSessionIds, result.successes),
     }))
     return result
   },
@@ -194,6 +218,19 @@ function preserveLocalTitle(
     return { ...incoming, title: current.title }
   }
   return incoming
+}
+
+function preserveTabTitle(
+  tab: { title: string } | undefined,
+  session: SessionListItem,
+): SessionListItem {
+  const title = tab?.title.trim()
+  if (!title || title === session.title || !isPlaceholderSessionTitle(session.title)) return session
+  return { ...session, title }
+}
+
+function isPersistedEmptyPlaceholderSession(session: SessionListItem): boolean {
+  return session.messageCount === 0 && isPlaceholderSessionTitle(session.title)
 }
 
 function syncOpenSessionTabTitles(sessions: SessionListItem[]): void {

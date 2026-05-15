@@ -628,28 +628,6 @@ button, input, textarea, select, a, [role="button"] {
   width: var(--sidebar-rail-width);
 }
 
-.app-shell--mobile .sidebar-shell {
-  position: fixed;
-  inset: 0 auto 0 0;
-  z-index: 50;
-  width: min(88vw, var(--sidebar-width));
-  max-width: var(--sidebar-width);
-  overflow: visible;
-  transform: translateX(-100%);
-  transition:
-    transform var(--motion-sidebar-duration) var(--motion-sidebar-easing),
-    width var(--motion-sidebar-duration) var(--motion-sidebar-easing);
-}
-
-.app-shell--mobile .sidebar-shell[data-state="closed"] {
-  pointer-events: none;
-}
-
-.app-shell--mobile .sidebar-shell[data-state="open"] {
-  transform: translateX(0);
-  pointer-events: auto;
-}
-
 .sidebar-panel {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
@@ -663,13 +641,6 @@ button, input, textarea, select, a, [role="button"] {
 .sidebar-panel[data-state="closed"] {
   width: var(--sidebar-rail-width);
   min-width: var(--sidebar-rail-width);
-}
-
-.app-shell--mobile .sidebar-panel,
-.app-shell--mobile .sidebar-panel[data-state="closed"] {
-  width: min(88vw, var(--sidebar-width));
-  min-width: min(88vw, var(--sidebar-width));
-  box-shadow: var(--shadow-dropdown);
 }
 
 .sidebar-toggle-button {
@@ -789,14 +760,6 @@ button, input, textarea, select, a, [role="button"] {
   .sidebar-copy,
   .sidebar-section {
     transition-duration: 0.01ms !important;
-  }
-}
-
-@media (max-width: 767px) {
-  .app-shell-main--mobile {
-    width: 100%;
-    min-width: 0;
-    overflow-x: hidden;
   }
 }
 

@@ -9,9 +9,6 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import type { SavedProvider } from '../../types/provider'
 import type { RuntimeSelection } from '../../types/runtime'
 import type { EffortLevel, ModelInfo } from '../../types/settings'
-import { useMobileViewport } from '../../hooks/useMobileViewport'
-import { isTauriRuntime } from '../../lib/desktopRuntime'
-import { MobileBottomSheet } from '../shared/MobileBottomSheet'
 
 type ProviderChoice = {
   providerId: string | null
@@ -169,7 +166,6 @@ export function ModelSelector({
   compact = false,
 }: Props = {}) {
   const t = useTranslation()
-  const isMobileBrowser = useMobileViewport() && !isTauriRuntime()
   const {
     currentModel: storeModel,
     availableModels,
@@ -392,12 +388,10 @@ export function ModelSelector({
 
   const dropdownContent = (
     <>
-      <div className={`overflow-y-auto ${isMobileBrowser ? 'p-1' : 'p-3'}`} style={{ maxHeight: isMobileBrowser ? undefined : dropdownPosition?.maxHeight }}>
-        {!isMobileBrowser && (
-          <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-outline)]">
-            {t('model.configuration')}
-          </div>
-        )}
+      <div className="overflow-y-auto p-3" style={{ maxHeight: dropdownPosition?.maxHeight }}>
+        <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-outline)]">
+          {t('model.configuration')}
+        </div>
 
         {isRuntimeScoped ? (
           <div className="space-y-3">
@@ -425,7 +419,7 @@ export function ModelSelector({
                         onClick={() => handleRuntimeSelect({ providerId: choice.providerId, modelId: model.id })}
                         className={`
                           w-full rounded-lg border px-3 text-left transition-colors
-                          ${isMobileBrowser ? 'min-h-[56px] py-3' : 'py-2.5'}
+                          py-2.5
                           ${isSelected
                             ? 'border-[var(--color-model-option-selected-border)] bg-[var(--color-model-option-selected-bg)]'
                             : 'border-transparent hover:bg-[var(--color-surface-hover)]'
@@ -476,7 +470,7 @@ export function ModelSelector({
                   }}
                   className={`
                     w-full rounded-lg px-3 text-left transition-colors
-                    ${isMobileBrowser ? 'min-h-[56px] py-3' : 'py-2.5'}
+                    py-2.5
                     ${isSelected
                       ? 'border border-[var(--color-model-option-selected-border)] bg-[var(--color-model-option-selected-bg)]'
                       : 'hover:bg-[var(--color-surface-hover)]'
@@ -542,20 +536,7 @@ export function ModelSelector({
   )
 
   const dropdown = open && dropdownPosition
-    ? isMobileBrowser ? (
-      <MobileBottomSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        title={t('model.configuration')}
-        closeLabel={t('tabs.close')}
-        ariaLabel={t('model.configuration')}
-        contentClassName="p-3"
-        panelRef={dropdownRef}
-        testId="model-selector-dropdown"
-      >
-        {dropdownContent}
-      </MobileBottomSheet>
-    ) : createPortal(
+    ? createPortal(
       <div
         ref={dropdownRef}
         data-testid="model-selector-dropdown"
